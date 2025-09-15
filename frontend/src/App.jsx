@@ -13,14 +13,14 @@ import ProtectedRoute from './components/ProtectedRoute';
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900">
       <Navbar />
-      <main className="mx-auto max-w-6xl px-4 py-6">
+      <main className="mx-auto max-w-7xl px-4 py-6">
         <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/daily-checkin" element={<DailyCheckin />} />
-          <Route path="/upload-report" element={<UploadReport />} />
-          <Route path="/chatbot" element={<ChatbotPage />} />
+          <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/daily-checkin" element={<ProtectedRoute><DailyCheckin /></ProtectedRoute>} />
+          <Route path="/upload-report" element={<ProtectedRoute><UploadReport /></ProtectedRoute>} />
+          <Route path="/chatbot" element={<ProtectedRoute><ChatbotPage /></ProtectedRoute>} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="*" element={<NotFound />} />

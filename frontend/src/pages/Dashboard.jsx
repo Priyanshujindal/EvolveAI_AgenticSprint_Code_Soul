@@ -9,6 +9,7 @@ import Button from '../components/ui/Button';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import Spinner from '../components/ui/Spinner';
 import { useToast } from '../components/ui/ToastProvider';
+import { analyze } from '../services/api';
 import Skeleton from '../components/ui/Skeleton';
 import Hero from '../components/Hero';
 import StatCard from '../components/StatCard';
@@ -20,17 +21,15 @@ export default function Dashboard() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [nearby, setNearby] = useState(null);
+  const [nearbyLoading, setNearbyLoading] = useState(false);
+  const [nearbyError, setNearbyError] = useState(null);
 
   async function analyzeMock() {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch('http://localhost:8080/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes: 'fever and headache', vitals: { temperature: 38.5 } })
-      });
-      const data = await res.json();
+      const data = await analyze({ notes: 'fever and headache', vitals: { temperature: 38.5 } });
       setResult(data);
     } catch (e) {
       setError(String(e?.message || e));
@@ -39,14 +38,46 @@ export default function Dashboard() {
     }
   }
 
-  const [nearby, setNearby] = useState(null);
   async function locateAmbulance() {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(async pos => {
-      const { latitude, longitude } = pos.coords;
-      const r = await findNearbyAmbulance(latitude, longitude);
-      setNearby(r);
-    });
+    try {
+      setNearbyError(null);
+      setNearbyLoading(true);
+      if (!navigator.geolocation) {
+        throw new Error('Geolocation is not supported by this browser.');
+      }
+      notify('Finding nearby ambulance services...', 'info');
+      await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          async pos => {
+            try {
+              const { latitude, longitude } = pos.coords;
+              const r = await findNearbyAmbulance(latitude, longitude);
+              if (!r || r.ok === false) {
+                const msg = (r && r.error) ? r.error : 'Failed to fetch nearby services';
+                throw new Error(msg);
+              }
+              setNearby(r);
+              const count = Array.isArray(r.data) ? r.data.length : 0;
+              notify(`Found ${count} ambulance service${count === 1 ? '' : 's'}`, 'success');
+              resolve();
+            } catch (e) {
+              reject(e);
+            }
+          },
+          err => {
+            const msg = err && err.message ? err.message : 'Unable to retrieve location.';
+            reject(new Error(msg));
+          },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+      });
+    } catch (e) {
+      const message = e?.message || 'Failed to find nearby ambulances';
+      setNearbyError(message);
+      notify(message, 'error');
+    } finally {
+      setNearbyLoading(false);
+    }
   }
 
   return (
@@ -141,6 +172,35 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           )}
+        </div>
+      )}
+      {(nearbyLoading || nearbyError || (nearby && Array.isArray(nearby.data))) && (
+        <div className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Nearby Ambulance Services</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {nearbyLoading && (
+                <div className="text-slate-600 inline-flex items-center gap-2"><Spinner /> Locating services...</div>
+              )}
+              {nearbyError && (
+                <div className="text-red-600">{nearbyError}</div>
+              )}
+              {!nearbyLoading && !nearbyError && (
+                <ul className="list-disc pl-6">
+                  {(nearby?.data || []).map((n, i) => (
+                    <li key={i}>
+                      <span className="font-medium">{n.name}</span> — {n.address || 'Address N/A'}{typeof n.distance_meters === 'number' ? ` • ${n.distance_meters} m` : ''}{n.rating ? ` • rating: ${n.rating}` : ''}
+                    </li>
+                  ))}
+                  {(nearby?.data || []).length === 0 && (
+                    <li>No ambulance services found nearby.</li>
+                  )}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { processReport } from '../services/api';
+import { processReportWithProgress } from '../services/api';
 import Button from '../components/ui/Button';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import Spinner from '../components/ui/Spinner';
@@ -16,6 +16,8 @@ export default function UploadReport() {
   const [previewUrl, setPreviewUrl] = useState('');
   const [showOcr, setShowOcr] = useState(true);
   const [statusText, setStatusText] = useState('Idle');
+  const abortRef = useRef(null);
+  const [lastError, setLastError] = useState('');
 
   const acceptedTypes = useMemo(() => ['application/pdf', 'image/jpeg', 'image/png', 'image/heic', 'image/heif'], []);
   const maxSizeBytes = 10 * 1024 * 1024; // 10MB
@@ -60,6 +62,27 @@ export default function UploadReport() {
     setPreviewUrl('');
   }, [file]);
 
+  // Enable paste-from-clipboard for images
+  useEffect(() => {
+    const onPaste = async (e) => {
+      try {
+        const item = Array.from(e.clipboardData?.items || []).find(i => i.type.startsWith('image/'));
+        if (!item) return;
+        const blob = item.getAsFile();
+        if (!blob) return;
+        const err = validateFile(blob);
+        if (err) {
+          notify(err, 'error');
+          return;
+        }
+        setFile(new File([blob], blob.name || 'pasted-image.png', { type: blob.type }));
+        notify('Image pasted from clipboard', 'success');
+      } catch (_) {}
+    };
+    window.addEventListener('paste', onPaste);
+    return () => window.removeEventListener('paste', onPaste);
+  }, [notify, validateFile]);
+
   async function submit(e) {
     e.preventDefault();
     if (!file) {
@@ -67,25 +90,45 @@ export default function UploadReport() {
       return;
     }
     setIsLoading(true);
-    setProgress(10);
-    setStatusText('Uploading and processing…');
+    setProgress(0);
+    setLastError('');
+    setStatusText('Uploading…');
     try {
-      // Fetch API does not give native progress; simulate UI progress steps
-      const tick = setInterval(() => setProgress(p => Math.min(p + 7, 85)), 250);
-      const res = await processReport(file);
-      clearInterval(tick);
+      const controller = new AbortController();
+      abortRef.current = controller;
+      const res = await processReportWithProgress(file, {
+        onProgress: (p) => setProgress(p),
+        signal: controller.signal
+      });
       setProgress(100);
       setOcr(res);
       setStatusText('Completed');
       notify('Report processed successfully.', 'success');
     } catch (err) {
-      setStatusText('Failed');
-      notify('Failed to process the report.', 'error');
+      const message = err?.message || 'Failed to process the report.';
+      setLastError(message);
+      setStatusText(message.toLowerCase().includes('canceled') ? 'Canceled' : 'Failed');
+      notify(message, 'error');
     } finally {
-      setTimeout(() => setIsLoading(false), 300);
-      setTimeout(() => setProgress(0), 800);
+      abortRef.current = null;
+      setTimeout(() => setIsLoading(false), 200);
     }
   }
+
+  const cancelUpload = useCallback(() => {
+    if (abortRef.current) {
+      abortRef.current.abort();
+    }
+  }, []);
+
+  const retry = useCallback(() => {
+    if (!file) return;
+    setOcr(null);
+    setProgress(0);
+    setStatusText('Retrying…');
+    const fakeEvent = { preventDefault: () => {} };
+    submit(fakeEvent);
+  }, [file]);
 
   return (
     <div>
@@ -187,22 +230,34 @@ export default function UploadReport() {
                   Replace
                 </Button>
                 <div className="ml-auto" />
-                <Button type="submit" disabled={!file || isLoading} className="bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-600">
-                  {isLoading ? (
-                    <span className="inline-flex items-center gap-2"><Spinner size={16} /> Processing…</span>
-                  ) : (
-                    'Process report'
-                  )}
-                </Button>
+                {isLoading ? (
+                  <div className="flex items-center gap-3">
+                    <Button type="button" variant="danger" onClick={cancelUpload}>
+                      Cancel
+                    </Button>
+                    <Button type="button" variant="primary" disabled className="bg-indigo-600">
+                      <span className="inline-flex items-center gap-2"><Spinner size={16} /> Uploading…</span>
+                    </Button>
+                  </div>
+                ) : (
+                  <Button type="submit" disabled={!file} className="bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-600">
+                    Process report
+                  </Button>
+                )}
               </div>
             </form>
 
             <div className="mt-6">
               <div className="flex items-center gap-2 text-xs">
-                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 border ${statusText === 'Completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : statusText === 'Failed' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-sky-50 text-sky-700 border-sky-200'}`}>
-                  <span className={`h-2 w-2 rounded-full ${statusText === 'Completed' ? 'bg-emerald-600' : statusText === 'Failed' ? 'bg-rose-600' : 'bg-sky-600'}`} />
+                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 border ${statusText === 'Completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : (statusText === 'Failed' || statusText === 'Canceled') ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-sky-50 text-sky-700 border-sky-200'}`}>
+                  <span className={`h-2 w-2 rounded-full ${statusText === 'Completed' ? 'bg-emerald-600' : (statusText === 'Failed' || statusText === 'Canceled') ? 'bg-rose-600' : 'bg-sky-600'}`} />
                   {statusText}
                 </span>
+                {!!lastError && !isLoading && (
+                  <button className="text-rose-700 underline" onClick={retry}>
+                    Retry
+                  </button>
+                )}
               </div>
             </div>
           </CardContent>
@@ -247,5 +302,6 @@ export default function UploadReport() {
     </div>
   );
 }
+
 
 

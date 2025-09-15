@@ -8,6 +8,13 @@ except Exception:  # keep repo runnable without python deps
     nn = None
     F = None
 
+try:
+    import scipy
+    import numpy as _np
+except Exception:
+    scipy = None
+    _np = None
+
 
 class DiagnosisModel(nn.Module if nn else object):
     """A minimal feed-forward model for triaging 3 conditions from 8 numeric inputs.
@@ -54,7 +61,18 @@ class DiagnosisModel(nn.Module if nn else object):
         return probs
 
 
-def featurize_payload_to_tensor(payload) -> "torch.Tensor | None":
+def _winsorize(values, lower_pct: float = 0.01, upper_pct: float = 0.99):
+    if _np is None or scipy is None:
+        return values
+    try:
+        lo = _np.quantile(values, lower_pct)
+        hi = _np.quantile(values, upper_pct)
+        return [max(lo, min(v, hi)) for v in values]
+    except Exception:
+        return values
+
+
+def featurize_payload_to_tensor(payload, use_scipy_winsorize: bool = False) -> "torch.Tensor | None":
     """Map request payload into a fixed-size numeric tensor of shape (1, 8).
 
     This is a simple, deterministic featurization over common vitals/labs.
@@ -77,6 +95,10 @@ def featurize_payload_to_tensor(payload) -> "torch.Tensor | None":
         float(labs.get("crp", 0.0)),
         float(labs.get("glucose", 0.0)),
     ]
+
+    # Optional SciPy-backed winsorization to reduce outlier impact in demo
+    if use_scipy_winsorize:
+        raw = _winsorize(raw)
 
     # Simple normalization with rough means/stds (demo only)
     means = [75.0, 120.0, 80.0, 16.0, 36.8, 7.0, 5.0, 95.0]

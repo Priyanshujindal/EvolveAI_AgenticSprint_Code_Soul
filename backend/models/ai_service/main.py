@@ -41,6 +41,8 @@ class AnalyzeRequest(BaseModel):
     vitals: Dict[str, Any] | None = None
     labs: Dict[str, Any] | None = None
     topK: int | None = None
+    explainMethod: str | None = None  # "auto" | "captum" | "shap" | "none"
+    useScipyWinsorize: bool | None = None
 
 
 @app.get("/health")
@@ -71,7 +73,7 @@ def analyze(req: AnalyzeRequest):
 
         # Prepare features
         payload = req.dict() if req else {}
-        x = featurize_payload_to_tensor(payload)
+        x = featurize_payload_to_tensor(payload, use_scipy_winsorize=bool(payload.get("useScipyWinsorize")))
 
         diagnoses: List[Dict[str, Any]] = []
         explainability: Dict[str, Any] = {"available": False}
@@ -97,7 +99,8 @@ def analyze(req: AnalyzeRequest):
 
                 # Compute simple feature attributions for top-1
                 top1 = top_indices[0]
-                attrs = compute_attributions(model, x, target_index=int(top1))
+                method = payload.get("explainMethod")
+                attrs = compute_attributions(model, x, target_index=int(top1), method=method)
                 feature_names = [
                     "heartRate",
                     "systolicBP",
@@ -110,7 +113,7 @@ def analyze(req: AnalyzeRequest):
                 ]
                 explainability = summarize_attributions({
                     "available": attrs is not None,
-                    "method": "integrated_gradients" if attrs is not None else "none",
+                    "method": (method or "auto") if attrs is not None else "none",
                     "features": feature_names,
                     "attributions": attrs,
                 })

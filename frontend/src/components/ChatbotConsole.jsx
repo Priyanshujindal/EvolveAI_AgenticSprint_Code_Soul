@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
+import { chatWithGeminiApi } from '../services/api';
 import Button from './ui/Button';
 import Textarea from './ui/Textarea';
 import Spinner from './ui/Spinner';
@@ -8,6 +9,7 @@ export default function ChatbotConsole() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [controller, setController] = useState(null);
   const listRef = useRef(null);
   const textareaRef = useRef(null);
 
@@ -42,18 +44,17 @@ export default function ChatbotConsole() {
     setInput('');
     setLoading(true);
     try {
-      const payload = { messages: nextMessages };
-      const res = await fetch('http://localhost:8080/functions/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      setMessages(m => m.concat({ role: 'assistant', content: data?.data?.reply || '...', createdAt: Date.now() }));
+      const payload = { messages: nextMessages, options: { maxOutputTokens: 512 } };
+      const abort = new AbortController();
+      setController(abort);
+      const data = await chatWithGeminiApi(payload, { signal: abort.signal });
+      const reply = data?.data?.reply || data?.data?.error || '...';
+      setMessages(m => m.concat({ role: 'assistant', content: reply, createdAt: Date.now() }));
     } catch (e) {
       setMessages(m => m.concat({ role: 'assistant', content: 'Sorry, something went wrong.', createdAt: Date.now() }));
     } finally {
       setLoading(false);
+      setController(null);
     }
   }
 
@@ -84,10 +85,15 @@ export default function ChatbotConsole() {
           </span>
         </div>
         <div className="flex items-center gap-2">
+          {loading ? (
+            <Button variant="secondary" className="px-2 py-1 text-xs" onClick={() => controller?.abort()}>
+              Stop
+            </Button>
+          ) : null}
           <Button variant="secondary" className="px-2 py-1 text-xs" onClick={clearConversation} disabled={messages.length === 0 && !loading}>Clear</Button>
         </div>
       </div>
-      <div ref={listRef} className="max-h-[60vh] min-h-[40vh] overflow-auto rounded-md border bg-white dark:bg-slate-950 p-4">
+      <div ref={listRef} className="max-h-[70vh] min-h-[55vh] overflow-auto rounded-md border bg-white dark:bg-slate-950 p-4">
         {messages.length === 0 && (
           <div className="text-sm text-slate-500">Start the conversation by asking a question.</div>
         )}

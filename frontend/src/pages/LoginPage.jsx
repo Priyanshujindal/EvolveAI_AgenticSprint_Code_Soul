@@ -10,7 +10,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const from = location.state?.from?.pathname || '/';
 
   function onSubmit(e) {
@@ -20,25 +20,31 @@ export default function LoginPage() {
     navigate(from, { replace: true });
   }
 
+  if (user) {
+    return null;
+  }
+
   return (
-    <div>
-      <h1 className="text-xl font-semibold mb-4">Login</h1>
-      <Card className="max-w-md">
-        <CardContent>
-          <form className="space-y-3" onSubmit={onSubmit}>
-            <div>
-              <label className="block text-sm mb-1 text-slate-700">Email</label>
-              <Input type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} />
-            </div>
-            <div>
-              <label className="block text-sm mb-1 text-slate-700">Password</label>
-              <Input type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} />
-            </div>
-            <Button type="submit" className="w-full">Sign in</Button>
-          </form>
-          <p className="text-sm text-slate-600 mt-3">No account? <Link className="text-blue-600" to="/signup">Sign up</Link></p>
-        </CardContent>
-      </Card>
+    <div className="grid place-items-center">
+      <div className="w-full max-w-md">
+        <h1 className="text-2xl font-semibold mb-4 text-slate-900 dark:text-slate-100">Welcome back</h1>
+        <Card>
+          <CardContent>
+            <form className="space-y-4" onSubmit={onSubmit}>
+              <div>
+                <label className="block text-sm mb-1 text-slate-700 dark:text-slate-300">Email</label>
+                <Input type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-sm mb-1 text-slate-700 dark:text-slate-300">Password</label>
+                <Input type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} />
+              </div>
+              <Button type="submit" className="w-full">Sign in</Button>
+            </form>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mt-3">No account? <Link className="text-blue-600" to="/signup">Sign up</Link></p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

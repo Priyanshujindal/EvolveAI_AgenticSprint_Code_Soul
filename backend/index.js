@@ -1,3 +1,5 @@
+// Load environment variables from .env if present
+try { require('dotenv').config(); } catch (_) {}
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -20,7 +22,7 @@ const submitFeedback = require('./cloudFunctions/submitFeedback');
 const app = express();
 app.set('trust proxy', true);
 // CORS must be before any route-specific middlewares to ensure preflight success
-const { ALLOWED_ORIGINS, DEV_ALLOW_ALL_CORS } = require('./config/config');
+const { ALLOWED_ORIGINS, DEV_ALLOW_ALL_CORS, AI_SERVICE_URL } = require('./config/config');
 const corsOptions = {
   origin: DEV_ALLOW_ALL_CORS ? true : ALLOWED_ORIGINS,
   credentials: true,
@@ -54,7 +56,7 @@ app.post('/api/analyze', async (req, res) => {
     if (!validation.ok) {
       return res.status(400).json({ success: false, error: validation.error });
     }
-    const usePython = process.env.AI_SERVICE_URL;
+    const usePython = AI_SERVICE_URL;
     if (usePython) {
       const { data } = await httpClient.post(`${usePython.replace(/\/$/, '')}/analyze`, req.body || {});
       const advisory = await advisoryAgent(data);
@@ -105,7 +107,8 @@ try {
 const { errorHandler } = require('./middleware/errorHandler');
 app.use(errorHandler);
 
-const BASE_PORT = Number(process.env.PORT || 8080);
+const { PORT: CONFIG_PORT } = require('./config/config');
+const BASE_PORT = Number(CONFIG_PORT || 8080);
 function tryListen(port, attemptsLeft) {
   const server = app.listen(port, () => {
     console.log(`Backend listening on port ${port}`);
