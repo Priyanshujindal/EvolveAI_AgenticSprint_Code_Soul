@@ -1,0 +1,16 @@
+{
+  "name": "ai-diagnostic-triage-system",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "start:backend": "cd backend && npm install && npm run start",
+    "start:frontend": "cd frontend && npm install && npm run dev",
+    "build:frontend": "cd frontend && npm install && npm run build",
+    "start:all": "npm run build:frontend && npm run start:backend"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+
+
