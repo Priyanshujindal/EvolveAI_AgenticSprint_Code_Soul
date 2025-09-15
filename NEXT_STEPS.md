@@ -36,7 +36,7 @@ Fill these in `.env` files. Names may vary; use the examples in repo as canonica
   - `RATE_LIMIT_MAX=100`
 
 - Frontend `.env`
-  - `VITE_API_BASE_URL=http://localhost:8080`
+  - `VITE_API_BASE=http://localhost:8080`
   - `VITE_FIREBASE_API_KEY=`
   - `VITE_FIREBASE_AUTH_DOMAIN=`
   - `VITE_FIREBASE_PROJECT_ID=`
@@ -59,6 +59,7 @@ Fill these in `.env` files. Names may vary; use the examples in repo as canonica
   - Prefer service account with JSON key; set envs or use ADC. For direct API key usage, enable Vision API.
 - Firebase
   - Create a Firebase project; enable Authentication (Email/Password or chosen providers). Get web app config for frontend envs; generate Admin SDK service account for backend.
+  - In the frontend, login/signup will use Firebase; backend will verify `Authorization: Bearer <idToken>` when present.
 
 ---
 

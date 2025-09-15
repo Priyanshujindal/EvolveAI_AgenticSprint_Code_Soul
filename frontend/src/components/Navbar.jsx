@@ -21,7 +21,6 @@ export default function Navbar() {
             <NavLink className={linkCls} to="/">Dashboard</NavLink>
             <NavLink className={linkCls} to="/daily-checkin">Daily Check-in</NavLink>
             <NavLink className={linkCls} to="/upload-report">Upload Report</NavLink>
-            <NavLink className={linkCls} to="/chatbot">Chatbot</NavLink>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={toggleTheme} aria-label="Toggle theme" className="px-2 py-1 rounded text-xs bg-slate-200 hover:bg-slate-300 text-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-100">
@@ -41,7 +40,6 @@ export default function Navbar() {
             <NavLink onClick={() => setOpen(false)} className={linkCls} to="/">Dashboard</NavLink>
             <NavLink onClick={() => setOpen(false)} className={linkCls} to="/daily-checkin">Daily Check-in</NavLink>
             <NavLink onClick={() => setOpen(false)} className={linkCls} to="/upload-report">Upload Report</NavLink>
-            <NavLink onClick={() => setOpen(false)} className={linkCls} to="/chatbot">Chatbot</NavLink>
           </div>
         )}
       </div>

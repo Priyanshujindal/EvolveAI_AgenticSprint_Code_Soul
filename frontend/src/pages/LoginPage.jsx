@@ -13,10 +13,9 @@ export default function LoginPage() {
   const { login, user } = useAuth();
   const from = location.state?.from?.pathname || '/';
 
-  function onSubmit(e) {
+  async function onSubmit(e) {
     e.preventDefault();
-    // Fake login: set simple user object
-    login({ id: 'demo', email });
+    await login({ email, password });
     navigate(from, { replace: true });
   }
 

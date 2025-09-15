@@ -14,7 +14,8 @@
     "react-router-dom": "^6.26.0",
     "chart.js": "^4.4.1",
     "react-chartjs-2": "^5.2.0",
-    "d3": "^7.9.0"
+    "d3": "^7.9.0",
+    "firebase": "^10.14.0"
   },
   "devDependencies": {
     "vite": "^5.4.0",

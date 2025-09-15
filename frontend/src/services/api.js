@@ -1,7 +1,20 @@
-export const BASE = (import.meta && import.meta.env && import.meta.env.VITE_API_BASE)
-  ? import.meta.env.VITE_API_BASE.replace(/\/$/, '')
+export const BASE = (import.meta && import.meta.env && (import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_BASE_URL))
+  ? (import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_BASE_URL).replace(/\/$/, '')
   : 'http://localhost:8080';
+import { auth } from '../firebase';
+
 const DEV_HEADERS = { 'x-user-id': 'demo' }; // used when firebase-admin is not configured
+
+async function buildAuthHeaders() {
+  try {
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      const token = await currentUser.getIdToken();
+      return { Authorization: `Bearer ${token}` };
+    }
+  } catch (_) {}
+  return { ...DEV_HEADERS };
+}
 
 export async function analyze(body) {
   const res = await fetch(`${BASE}/api/analyze`, {
