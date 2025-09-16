@@ -8,6 +8,8 @@ import { useLocation, useNavigate, Link } from 'react-router-dom';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
   const { login, user } = useAuth();
@@ -15,8 +17,17 @@ export default function LoginPage() {
 
   async function onSubmit(e) {
     e.preventDefault();
-    await login({ email, password });
-    navigate(from, { replace: true });
+    setError('');
+    setSubmitting(true);
+    try {
+      await login({ email, password });
+      navigate(from, { replace: true });
+    } catch (err) {
+      const message = err?.message || 'Sign in failed';
+      setError(message);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   if (user) {
@@ -32,13 +43,16 @@ export default function LoginPage() {
             <form className="space-y-4" onSubmit={onSubmit}>
               <div>
                 <label className="block text-sm mb-1 text-slate-700 dark:text-slate-300">Email</label>
-                <Input type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} />
+                <Input type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} disabled={submitting} />
               </div>
               <div>
                 <label className="block text-sm mb-1 text-slate-700 dark:text-slate-300">Password</label>
-                <Input type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} />
+                <Input type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} disabled={submitting} />
               </div>
-              <Button type="submit" className="w-full">Sign in</Button>
+              {error ? (
+                <p className="text-sm text-red-600">{error}</p>
+              ) : null}
+              <Button type="submit" className="w-full" disabled={submitting}>{submitting ? 'Signing in…' : 'Sign in'}</Button>
             </form>
             <p className="text-sm text-slate-600 dark:text-slate-400 mt-3">No account? <Link className="text-blue-600" to="/signup">Sign up</Link></p>
           </CardContent>

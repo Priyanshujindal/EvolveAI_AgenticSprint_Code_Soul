@@ -33,7 +33,21 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 // Security headers
-app.use(helmet());
+// Helmet with CSP allowing Firebase Auth endpoints
+app.use(helmet({
+  contentSecurityPolicy: {
+    useDefaults: true,
+    directives: {
+      // Use camelCase directive names per Helmet API
+      connectSrc: [
+        "'self'",
+        'https://identitytoolkit.googleapis.com',
+        'https://securetoken.googleapis.com',
+        'https://www.googleapis.com'
+      ],
+    },
+  },
+}));
 // Basic rate limiting for API and functions
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300 });
 app.use(['/api', '/functions'], limiter);

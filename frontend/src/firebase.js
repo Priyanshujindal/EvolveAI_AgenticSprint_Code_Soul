@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { getAnalytics, isSupported as analyticsIsSupported } from 'firebase/analytics';
 
 // Expect environment variables to be provided via Vite
 // VITE_FIREBASE_API_KEY, VITE_FIREBASE_AUTH_DOMAIN, VITE_FIREBASE_PROJECT_ID,
@@ -12,6 +13,7 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
 function isConfigValid(cfg) {
@@ -20,6 +22,7 @@ function isConfigValid(cfg) {
 
 let app;
 let auth;
+let analytics;
 
 try {
   if (!isConfigValid(firebaseConfig)) {
@@ -27,6 +30,19 @@ try {
   }
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
+  // Initialize Analytics only when measurementId is provided and environment supports it
+  if (firebaseConfig.measurementId) {
+    try {
+      // Avoid top-level await: check support asynchronously without blocking
+      analyticsIsSupported()
+        .then((supported) => {
+          if (supported) {
+            analytics = getAnalytics(app);
+          }
+        })
+        .catch(() => {});
+    } catch (_) {}
+  }
 } catch (e) {
   // Soft-fail: log and provide no-op auth so the app can still render
   // Common causes: missing VITE_FIREBASE_* envs, invalid API key, referrer restrictions

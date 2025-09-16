@@ -3,7 +3,16 @@
 @tailwind utilities;
 
 @layer base {
+  :root { color-scheme: light dark; }
+  html { @apply antialiased; }
+  body { @apply text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-950; }
+  a { @apply text-brand-600 hover:text-brand-700 dark:text-brand-300 dark:hover:text-brand-200; }
+  code { @apply rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5; }
   h1 { @apply text-2xl font-semibold text-slate-900; }
   h2 { @apply text-xl font-semibold text-slate-900; }
   pre { @apply text-sm leading-6; }
+}
+
+@layer components {
+  .container-page { @apply mx-auto max-w-7xl px-4 sm:px-6 lg:px-8; }
 }

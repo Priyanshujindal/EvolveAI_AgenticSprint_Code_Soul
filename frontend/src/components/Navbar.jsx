@@ -7,14 +7,14 @@ export default function Navbar() {
   const { theme, toggleTheme } = useTheme();
   const [open, setOpen] = useState(false);
   const linkCls = ({ isActive }) =>
-    `px-3 py-2 rounded-md transition-colors hover:text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-800 ${isActive ? 'text-blue-700 bg-blue-50 dark:text-blue-300 dark:bg-slate-800' : 'text-slate-700 dark:text-slate-200'}`;
+    `px-3 py-2 rounded-md transition-colors hover:text-brand-700 hover:bg-slate-100 dark:hover:bg-slate-800 ${isActive ? 'text-brand-700 bg-brand-50 dark:text-brand-300 dark:bg-slate-800' : 'text-slate-700 dark:text-slate-200'}`;
 
   return (
-    <nav className="sticky top-0 z-40 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:supports-[backdrop-filter]:bg-slate-900/70 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
-      <div className="mx-auto max-w-6xl px-4 py-3">
+    <nav className="sticky top-0 z-40 backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:supports-[backdrop-filter]:bg-slate-900/70 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-subtle">
+      <div className="mx-auto max-w-7xl px-4 py-3">
         <div className="flex items-center gap-4">
           <div className="mr-auto flex items-center gap-3">
-            <div className="w-7 h-7 rounded-md bg-gradient-to-tr from-blue-600 to-indigo-600 shadow ring-1 ring-blue-500/30" />
+            <div className="w-7 h-7 rounded-md bg-gradient-to-tr from-brand-600 to-brand-700 shadow ring-1 ring-brand-500/30" />
             <span className="font-semibold tracking-wide text-slate-900 dark:text-slate-100">AgenticSprit</span>
           </div>
           <div className="hidden md:flex items-center gap-1">
