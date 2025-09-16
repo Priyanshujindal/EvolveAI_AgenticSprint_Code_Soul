@@ -1,6 +1,7 @@
-export const BASE = (import.meta && import.meta.env && (import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_BASE_URL))
+const isDev = !!(import.meta && import.meta.env && import.meta.env.DEV);
+export const BASE = isDev && (import.meta && import.meta.env && (import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_BASE_URL))
   ? (import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_BASE_URL).replace(/\/$/, '')
-  : 'http://localhost:8080';
+  : '';
 import { auth } from '../firebase';
 
 const DEV_HEADERS = { 'x-user-id': 'demo' }; // used when firebase-admin is not configured
@@ -143,11 +144,21 @@ export async function submitFeedback(feedback, userId = 'demo') {
 export async function chatWithGeminiApi(payload, { signal } = {}) {
   const res = await fetch(`${BASE}/functions/chat`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-User-Id': 'demo' },
+    headers: { 'Content-Type': 'application/json', 'x-user-id': 'demo' },
     body: JSON.stringify(payload),
     signal
   });
-  return res.json();
+  const text = await res.text();
+  let json = null;
+  try { json = text ? JSON.parse(text) : {}; } catch (_) { json = {}; }
+  if (!res.ok) {
+    const msg = json?.error || json?.message || `HTTP ${res.status}`;
+    const err = new Error(msg);
+    err.status = res.status;
+    err.body = json;
+    throw err;
+  }
+  return json;
 }
 
 

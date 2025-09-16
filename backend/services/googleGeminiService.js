@@ -1,5 +1,5 @@
 const { httpClient } = require('../utils/httpClient');
-const { GEMINI_API_KEY } = require('../config/config');
+const { GEMINI_API_KEY, GEMINI_MODEL } = require('../config/config');
 
 // Default system behavior to improve clinical assistant responses
 const DEFAULT_SYSTEM_PROMPT = [
@@ -28,7 +28,8 @@ function buildContents(messages, systemPrompt) {
 async function chatWithGemini(messages, options = {}) {
   if (!GEMINI_API_KEY) return { reply: 'Gemini API key missing.' };
 
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+  const model = (options && options.model) || GEMINI_MODEL || 'gemini-2.0-flash';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
   const headers = { 'Content-Type': 'application/json' };
   const params = { key: GEMINI_API_KEY };
 
@@ -41,7 +42,7 @@ async function chatWithGemini(messages, options = {}) {
       { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
       { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
       { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-      { category: 'HARM_CATEGORY_SEXUAL_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
     ],
     systemPrompt = DEFAULT_SYSTEM_PROMPT,
   } = options || {};
@@ -53,7 +54,7 @@ async function chatWithGemini(messages, options = {}) {
   const body = { contents, generationConfig, safetySettings };
 
   try {
-    const { data } = await httpClient.post(url, body, { headers, params });
+    const { data } = await httpClient.post(url, body, { headers, params, timeout: 30000 });
     const candidate = data?.candidates?.[0];
     const blocked = candidate?.safetyRatings?.some(r => r.blocked);
     const reply = candidate?.content?.parts?.[0]?.text || '...';

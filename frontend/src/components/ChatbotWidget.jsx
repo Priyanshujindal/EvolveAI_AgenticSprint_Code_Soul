@@ -5,11 +5,17 @@ import { Card, CardHeader, CardTitle, CardContent } from './ui/Card';
 
 export default function ChatbotWidget() {
   const [open, setOpen] = useState(false);
+  const [hasHistory, setHasHistory] = useState(false);
 
   useEffect(() => {
     try {
       const raw = localStorage.getItem('chat:widgetOpen');
       if (raw != null) setOpen(raw === 'true');
+      const msgs = localStorage.getItem('chat:messages');
+      if (msgs) {
+        const arr = JSON.parse(msgs);
+        setHasHistory(Array.isArray(arr) && arr.length > 0);
+      }
     } catch (_) {}
   }, []);
 
@@ -36,7 +42,7 @@ export default function ChatbotWidget() {
       {!open && (
         <Button
           onClick={toggle}
-          className="h-14 w-14 rounded-full shadow-lg px-0 py-0"
+          className={`h-14 w-14 rounded-full shadow-lg px-0 py-0 ring-2 ring-brand-600 ${hasHistory ? '' : 'animate-pulse'}`}
           aria-label="Open chat"
           title="Open chat (Alt+/)"
         >
@@ -44,16 +50,21 @@ export default function ChatbotWidget() {
         </Button>
       )}
       {open && (
-        <Card className="w-[360px] max-w-[92vw] h-[520px] max-h-[80vh] flex flex-col shadow-xl">
+        <Card className="w-[380px] max-w-[92vw] h-[560px] max-h-[80vh] flex flex-col shadow-xl">
           <CardHeader className="flex items-center justify-between py-3">
-            <CardTitle className="text-sm">Assistive Chat</CardTitle>
-            <button
-              onClick={close}
-              aria-label="Close chat"
-              className="rounded-md text-xs px-2 py-1 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-900 dark:text-slate-100"
-            >
-              ✕
-            </button>
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              <CardTitle className="text-sm">Assistive Chat</CardTitle>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={close}
+                aria-label="Close chat"
+                className="rounded-md text-xs px-2 py-1 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-900 dark:text-slate-100"
+              >
+                ✕
+              </button>
+            </div>
           </CardHeader>
           <CardContent className="p-0 flex-1 overflow-hidden">
             <div className="h-full overflow-auto p-4">

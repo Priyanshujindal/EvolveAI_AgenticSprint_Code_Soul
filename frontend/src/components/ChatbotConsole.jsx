@@ -12,6 +12,12 @@ export default function ChatbotConsole() {
   const [controller, setController] = useState(null);
   const listRef = useRef(null);
   const textareaRef = useRef(null);
+  const presets = useMemo(() => ([
+    'Summarize my last diagnosis',
+    'What red flags should I watch?',
+    'Explain this lab result in simple terms',
+    'What are next steps for follow-up?'
+  ]), []);
 
   useEffect(() => {
     // load from localStorage on mount
@@ -48,10 +54,11 @@ export default function ChatbotConsole() {
       const abort = new AbortController();
       setController(abort);
       const data = await chatWithGeminiApi(payload, { signal: abort.signal });
-      const reply = data?.data?.reply || data?.data?.error || '...';
+      const reply = data?.data?.error || data?.data?.reply || '...';
       setMessages(m => m.concat({ role: 'assistant', content: reply, createdAt: Date.now() }));
     } catch (e) {
-      setMessages(m => m.concat({ role: 'assistant', content: 'Sorry, something went wrong.', createdAt: Date.now() }));
+      const message = e?.message || 'Something went wrong';
+      setMessages(m => m.concat({ role: 'assistant', content: message, createdAt: Date.now() }));
     } finally {
       setLoading(false);
       setController(null);
@@ -93,19 +100,28 @@ export default function ChatbotConsole() {
           <Button variant="secondary" className="px-2 py-1 text-xs" onClick={clearConversation} disabled={messages.length === 0 && !loading}>Clear</Button>
         </div>
       </div>
-      <div ref={listRef} className="max-h-[70vh] min-h-[55vh] overflow-auto rounded-md border bg-white dark:bg-slate-950 p-4">
+      <div ref={listRef} className="max-h-[70vh] min-h-[55vh] overflow-auto rounded-lg border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-950/70 backdrop-blur p-4">
         {messages.length === 0 && (
-          <div className="text-sm text-slate-500">Start the conversation by asking a question.</div>
+          <div>
+            <div className="text-sm text-slate-500 mb-3">Start the conversation by asking a question, or try one of these:</div>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {presets.map((p, i) => (
+                <button key={i} onClick={() => setInput(p)} className="px-3 py-1.5 rounded-full text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-100 border border-slate-200 dark:border-slate-700">
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
         {messages.map((m, i) => (
           <div key={i} className={`mb-3 flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`flex items-end gap-2 ${m.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-              <div className={`h-8 w-8 shrink-0 rounded-full flex items-center justify-center text-xs font-semibold ${m.role === 'user' ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-700'}`}>{m.role === 'user' ? 'You' : 'AI'}</div>
+              <div className={`h-8 w-8 shrink-0 rounded-full flex items-center justify-center text-xs font-semibold ${m.role === 'user' ? 'bg-brand-600 text-white' : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-100'}`}>{m.role === 'user' ? 'You' : 'AI'}</div>
               <div>
-                <div className={`group relative max-w-[70vw] sm:max-w-[60%] rounded-2xl px-3 py-2 text-sm shadow-sm break-words ${
+                <div className={`group relative max-w-[70vw] sm:max-w-[60%] rounded-2xl px-3 py-2 text-sm shadow-subtle break-words ${
                   m.role === 'user'
-                    ? 'bg-blue-600 text-white rounded-br-md'
-                    : 'bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-bl-md'
+                    ? 'bg-brand-600 text-white rounded-br-md'
+                    : 'bg-slate-100/90 dark:bg-slate-900/80 text-slate-900 dark:text-slate-100 rounded-bl-md'
                 }`}>
                   <div>
                     {m.role === 'assistant' ? (
@@ -134,8 +150,8 @@ export default function ChatbotConsole() {
         {loading && (
           <div className="inline-flex items-center gap-2 text-slate-500 text-sm">
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-600"></span>
             </span>
             Thinking…
           </div>

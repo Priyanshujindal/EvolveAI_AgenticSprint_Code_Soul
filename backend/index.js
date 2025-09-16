@@ -24,10 +24,25 @@ app.set('trust proxy', true);
 // CORS must be before any route-specific middlewares to ensure preflight success
 const { ALLOWED_ORIGINS, DEV_ALLOW_ALL_CORS, AI_SERVICE_URL } = require('./config/config');
 const corsOptions = {
-  origin: DEV_ALLOW_ALL_CORS ? true : ALLOWED_ORIGINS,
+  origin: DEV_ALLOW_ALL_CORS ? true : (origin, callback) => {
+    // Allow requests without origin (mobile apps, curl)
+    if (!origin) return callback(null, true);
+    // Allow explicit whitelist from config
+    if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+    // Allow any localhost/127.0.0.1 with any port in dev
+    if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return callback(null, true);
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
   methods: ['GET','POST','PUT','DELETE','OPTIONS','PATCH'],
-  allowedHeaders: ['Content-Type','Authorization','X-Requested-With','X-User-Id'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    // normalize custom header casing
+    'x-user-id',
+    'X-User-Id'
+  ],
   optionsSuccessStatus: 204,
 };
 app.use(cors(corsOptions));
@@ -43,7 +58,36 @@ app.use(helmet({
         "'self'",
         'https://identitytoolkit.googleapis.com',
         'https://securetoken.googleapis.com',
-        'https://www.googleapis.com'
+        'https://www.googleapis.com',
+        'https://firebaseinstallations.googleapis.com',
+        'https://www.gstatic.com',
+        'https://www.google-analytics.com',
+        'https://firestore.googleapis.com',
+        'https://firebasestorage.googleapis.com',
+        'https://apis.google.com',
+        'http://localhost:8080'
+      ],
+      scriptSrc: [
+        "'self'",
+        "'unsafe-inline'",
+        'https://apis.google.com',
+        'https://www.googletagmanager.com',
+        'https://www.gstatic.com',
+        'https://www.google-analytics.com'
+      ],
+      imgSrc: [
+        "'self'",
+        'https://www.googletagmanager.com',
+        'https://www.google-analytics.com',
+        'data:'
+      ],
+      frameSrc: [
+        "'self'",
+        'https://apis.google.com'
+      ],
+      workerSrc: [
+        "'self'",
+        'blob:'
       ],
     },
   },
