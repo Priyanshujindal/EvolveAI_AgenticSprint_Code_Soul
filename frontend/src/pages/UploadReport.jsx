@@ -200,22 +200,22 @@ export default function UploadReport() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold mb-1 text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-fuchsia-600">Upload Report</h1>
-        <p className="text-sm text-slate-600">Upload a medical report to extract key details with OCR. We support PDF and image formats.</p>
+        <h1 className="text-2xl font-semibold mb-1 text-transparent bg-clip-text bg-gradient-to-r from-brand-600 via-blue-600 to-blue-500">Upload Report</h1>
+        <p className="text-sm text-slate-600 dark:text-slate-400">Upload a medical report to extract key details with OCR. We support PDF and image formats.</p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
-          <CardHeader className="bg-sky-50 border-b border-sky-200">
-            <CardTitle className="text-sky-900">Select file</CardTitle>
+          <CardHeader className="bg-blue-50 dark:bg-slate-800/50 border-b border-blue-100 dark:border-slate-700">
+            <CardTitle className="text-blue-900 dark:text-slate-100">Select file</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={submit} className="space-y-4">
               <div
                 className={`relative flex flex-col items-center justify-center gap-2 rounded border-2 border-dashed px-6 py-10 text-center transition-colors bg-gradient-to-r ${
                   isDragging
-                    ? 'from-blue-50 via-sky-50 to-indigo-50 border-blue-600'
-                    : 'from-sky-50 via-indigo-50 to-fuchsia-50 border-slate-300 hover:border-blue-400'
+                    ? 'from-blue-50 via-sky-50 to-indigo-50 dark:from-slate-800 dark:via-slate-800 dark:to-slate-800 border-blue-600 dark:border-blue-500'
+                    : 'from-brand-50 via-blue-50 to-blue-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900 border-slate-300 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-400'
                 }`}
                 onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                 onDragLeave={() => setIsDragging(false)}
@@ -231,21 +231,21 @@ export default function UploadReport() {
                 }}
               >
                 {isDragging && (
-                  <div className="absolute inset-0 bg-blue-600/10 border-2 border-blue-600 rounded pointer-events-none" />
+                  <div className="absolute inset-0 bg-blue-600/10 dark:bg-blue-500/10 border-2 border-blue-600 dark:border-blue-500 rounded pointer-events-none" />
                 )}
                 <div className="flex items-center gap-3">
                   {isLoading ? <Spinner size={20} /> : (
-                    <svg className="h-5 w-5 text-blue-600" viewBox="0 0 24 24" fill="none">
+                    <svg className="h-5 w-5 text-blue-600 dark:text-blue-300" viewBox="0 0 24 24" fill="none">
                       <path d="M12 16V4m0 12l-4-4m4 4l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                       <rect x="3" y="16" width="18" height="4" rx="1" stroke="currentColor" strokeWidth="1.5"/>
                     </svg>
                   )}
-                  <div className="text-slate-800">
+                  <div className="text-slate-800 dark:text-slate-100">
                     <div className="font-medium">Drag and drop your report</div>
-                    <div className="text-xs text-slate-600">PDF, JPG, or PNG up to 10MB. Paste an image with Ctrl/Cmd+V.</div>
+                    <div className="text-xs text-slate-600 dark:text-slate-400">PDF, JPG, or PNG up to 10MB. Paste an image with Ctrl/Cmd+V.</div>
                   </div>
                 </div>
-                <div className="text-xs text-slate-500">or</div>
+                <div className="text-xs text-slate-500 dark:text-slate-400">or</div>
                 <input
                   ref={inputRef}
                   type="file"
@@ -260,24 +260,24 @@ export default function UploadReport() {
                   <div className="mt-3 w-full max-w-md">
                     {previewUrl ? (
                       <div className="flex items-center gap-3">
-                        <img src={previewUrl} alt="preview" className="h-20 w-20 object-cover rounded border border-emerald-200" />
+                        <img src={previewUrl} alt="preview" className="h-20 w-20 object-cover rounded border border-emerald-200 dark:border-emerald-700" />
                         <div className="text-left">
                           <div className="flex items-center gap-2">
-                            <div className="text-sm font-medium text-slate-800 truncate">{file.name}</div>
-                            <span className="rounded-full bg-emerald-100 text-emerald-700 text-[10px] px-2 py-0.5 border border-emerald-200">IMAGE</span>
+                            <div className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{file.name}</div>
+                            <span className="rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300 text-[10px] px-2 py-0.5 border border-emerald-200 dark:border-emerald-800">IMAGE</span>
                           </div>
-                          <div className="text-xs text-slate-600">{Math.ceil(file.size / 1024)} KB</div>
+                          <div className="text-xs text-slate-600 dark:text-slate-400">{Math.ceil(file.size / 1024)} KB</div>
                         </div>
                       </div>
                     ) : (
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded bg-rose-100 text-rose-700 flex items-center justify-center font-semibold border border-rose-200">PDF</div>
+                        <div className="h-10 w-10 rounded bg-rose-100 text-rose-700 dark:bg-rose-900/20 dark:text-rose-300 flex items-center justify-center font-semibold border border-rose-200 dark:border-rose-800">PDF</div>
                         <div className="text-left">
                           <div className="flex items-center gap-2">
-                            <div className="text-sm font-medium text-slate-800 truncate">{file.name}</div>
-                            <span className="rounded-full bg-rose-100 text-rose-700 text-[10px] px-2 py-0.5 border border-rose-200">PDF</span>
+                            <div className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{file.name}</div>
+                            <span className="rounded-full bg-rose-100 text-rose-700 dark:bg-rose-900/20 dark:text-rose-300 text-[10px] px-2 py-0.5 border border-rose-200 dark:border-rose-800">PDF</span>
                           </div>
-                          <div className="text-xs text-slate-600">{Math.ceil(file.size / 1024)} KB</div>
+                          <div className="text-xs text-slate-600 dark:text-slate-400">{Math.ceil(file.size / 1024)} KB</div>
                         </div>
                       </div>
                     )}
@@ -285,8 +285,8 @@ export default function UploadReport() {
                 )}
                 {isLoading && (
                   <div className="absolute inset-x-0 bottom-0">
-                    <div className="h-1 w-full bg-indigo-100">
-                      <div className="h-1 bg-indigo-600 transition-all" style={{ width: `${progress}%` }} />
+                    <div className="h-1 w-full bg-blue-100 dark:bg-slate-800">
+                      <div className="h-1 bg-brand-600 dark:bg-blue-500 transition-all" style={{ width: `${progress}%` }} />
                     </div>
                   </div>
                 )}
@@ -305,12 +305,12 @@ export default function UploadReport() {
                     <Button type="button" variant="danger" onClick={cancelUpload}>
                       Cancel
                     </Button>
-                    <Button type="button" variant="primary" disabled className="bg-indigo-600">
+                    <Button type="button" variant="primary" disabled className="bg-brand-600 dark:bg-brand-600">
                       <span className="inline-flex items-center gap-2"><Spinner size={16} /> Uploading…</span>
                     </Button>
                   </div>
                 ) : (
-                  <Button type="submit" disabled={!file} className="bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-600">
+                  <Button type="submit" disabled={!file} className="bg-brand-600 hover:bg-brand-700 focus:ring-brand-600">
                     Process report
                   </Button>
                 )}
@@ -318,22 +318,22 @@ export default function UploadReport() {
             </form>
 
             <div className="mt-4 space-y-2">
-              <div className="text-xs text-slate-600">Or process a PDF by URL</div>
+              <div className="text-xs text-slate-600 dark:text-slate-400">Or process a PDF by URL</div>
               <form onSubmit={submitUrl} className="flex items-stretch gap-2">
                 <input
                   type="url"
                   placeholder="https://example.com/report.pdf"
-                  className="flex-1 rounded border px-3 py-2 text-sm border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                  className="flex-1 rounded border px-3 py-2 text-sm border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-200 dark:focus:ring-blue-300"
                   value={pdfUrl}
                   onChange={(e) => setPdfUrl(e.target.value)}
                   disabled={isLoading}
                 />
-                <label className="flex items-center gap-2 text-xs text-slate-700">
+                <label className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300">
                   <input type="checkbox" checked={forceOcr} onChange={(e) => setForceOcr(e.target.checked)} disabled={isLoading} />
                   Force OCR
                 </label>
                 <select
-                  className="rounded border px-2 py-2 text-xs border-slate-300 bg-white"
+                  className="rounded border px-2 py-2 text-xs border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   value={ocrLang}
                   onChange={(e) => setOcrLang(e.target.value)}
                   disabled={isLoading}
@@ -377,12 +377,12 @@ export default function UploadReport() {
 
         {/* Summary panel */}
         <Card>
-          <CardHeader className="bg-white border-b border-slate-200">
-            <CardTitle className="text-slate-900">Summary</CardTitle>
+          <CardHeader className="bg-white dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+            <CardTitle className="text-slate-900 dark:text-slate-100">Summary</CardTitle>
           </CardHeader>
-          <CardContent className="bg-white">
+          <CardContent className="bg-white dark:bg-slate-900/40">
             {!extracted ? (
-              <div className="text-sm text-slate-600">Upload or process a report to see a quick summary.</div>
+              <div className="text-sm text-slate-600 dark:text-slate-400">Upload or process a report to see a quick summary.</div>
             ) : (
               <div className="space-y-4">
                 {(() => {
@@ -419,40 +419,40 @@ export default function UploadReport() {
                         <StatCard label="Hemoglobin" value={hemo ? `${hemo.value ?? '—'} ${hemo.unit || ''}` : '—'} hint="g/dL" accent="emerald" />
                         <StatCard label="Glucose" value={glucose ? `${glucose.value ?? '—'} ${glucose.unit || ''}` : '—'} hint="mg/dL" accent="amber" />
                       </div>
-                      <div className="text-[13px] leading-6 text-slate-800 bg-slate-50 border border-slate-200 rounded p-3">
+                      <div className="text-[13px] leading-6 text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded p-3">
                         {generateSimpleSummary(extracted)}
                       </div>
                       <div className="grid grid-cols-1 gap-3">
                         {/* Color-coded badges + meters */}
-                        <div className="rounded border border-slate-200 p-3">
+                        <div className="rounded border border-slate-200 dark:border-slate-700 p-3">
                           <div className="flex items-center justify-between text-sm">
-                            <div className="font-medium text-slate-900">Hemoglobin</div>
+                            <div className="font-medium text-slate-900 dark:text-slate-100">Hemoglobin</div>
                             {(() => { const b = badge(hemo?.value, ranges.hemoglobin); return <span className={`px-2 py-0.5 rounded text-xs ${b.cls}`}>{b.text}</span>; })()}
                           </div>
-                          <div className="mt-2 h-2 bg-slate-100 rounded">
-                            <div className="h-2 bg-emerald-500 rounded" style={{ width: `${Math.round(meter(hemo?.value, ranges.hemoglobin) * 100)}%` }} />
+                          <div className="mt-2 h-2 bg-slate-100 dark:bg-slate-800 rounded">
+                            <div className="h-2 bg-emerald-500 dark:bg-emerald-400 rounded" style={{ width: `${Math.round(meter(hemo?.value, ranges.hemoglobin) * 100)}%` }} />
                           </div>
-                          <div className="mt-1 text-xs text-slate-500">Range {ranges.hemoglobin.min}-{ranges.hemoglobin.max} {ranges.hemoglobin.unit}</div>
+                          <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">Range {ranges.hemoglobin.min}-{ranges.hemoglobin.max} {ranges.hemoglobin.unit}</div>
                         </div>
-                        <div className="rounded border border-slate-200 p-3">
+                        <div className="rounded border border-slate-200 dark:border-slate-700 p-3">
                           <div className="flex items-center justify-between text-sm">
-                            <div className="font-medium text-slate-900">Glucose</div>
+                            <div className="font-medium text-slate-900 dark:text-slate-100">Glucose</div>
                             {(() => { const b = badge(glucose?.value, ranges.glucose); return <span className={`px-2 py-0.5 rounded text-xs ${b.cls}`}>{b.text}</span>; })()}
                           </div>
-                          <div className="mt-2 h-2 bg-slate-100 rounded">
-                            <div className="h-2 bg-blue-500 rounded" style={{ width: `${Math.round(meter(glucose?.value, ranges.glucose) * 100)}%` }} />
+                          <div className="mt-2 h-2 bg-slate-100 dark:bg-slate-800 rounded">
+                            <div className="h-2 bg-blue-500 dark:bg-blue-400 rounded" style={{ width: `${Math.round(meter(glucose?.value, ranges.glucose) * 100)}%` }} />
                           </div>
-                          <div className="mt-1 text-xs text-slate-500">Range {ranges.glucose.min}-{ranges.glucose.max} {ranges.glucose.unit}</div>
+                          <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">Range {ranges.glucose.min}-{ranges.glucose.max} {ranges.glucose.unit}</div>
                         </div>
-                        <div className="rounded border border-slate-200 p-3">
+                        <div className="rounded border border-slate-200 dark:border-slate-700 p-3">
                           <div className="flex items-center justify-between text-sm">
-                            <div className="font-medium text-slate-900">Creatinine</div>
+                            <div className="font-medium text-slate-900 dark:text-slate-100">Creatinine</div>
                             {(() => { const b = badge(creat?.value, ranges.creatinine); return <span className={`px-2 py-0.5 rounded text-xs ${b.cls}`}>{b.text}</span>; })()}
                           </div>
-                          <div className="mt-2 h-2 bg-slate-100 rounded">
-                            <div className="h-2 bg-indigo-500 rounded" style={{ width: `${Math.round(meter(creat?.value, ranges.creatinine) * 100)}%` }} />
+                          <div className="mt-2 h-2 bg-slate-100 dark:bg-slate-800 rounded">
+                            <div className="h-2 bg-indigo-500 dark:bg-indigo-400 rounded" style={{ width: `${Math.round(meter(creat?.value, ranges.creatinine) * 100)}%` }} />
                           </div>
-                          <div className="mt-1 text-xs text-slate-500">Range {ranges.creatinine.min}-{ranges.creatinine.max} {ranges.creatinine.unit}</div>
+                          <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">Range {ranges.creatinine.min}-{ranges.creatinine.max} {ranges.creatinine.unit}</div>
                         </div>
                       </div>
                     </>
@@ -464,44 +464,44 @@ export default function UploadReport() {
         </Card>
 
         <Card>
-          <CardHeader className="bg-white border-b border-slate-200">
-            <CardTitle className="text-slate-900">Extracted Fields</CardTitle>
+          <CardHeader className="bg-white dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+            <CardTitle className="text-slate-900 dark:text-slate-100">Extracted Fields</CardTitle>
           </CardHeader>
-          <CardContent className="bg-white">
+          <CardContent className="bg-white dark:bg-slate-900/40">
             {!extracted ? (
-              <div className="text-base text-slate-700">No structured fields extracted yet.</div>
+              <div className="text-base text-slate-700 dark:text-slate-300">No structured fields extracted yet.</div>
             ) : (
-              <div className="space-y-4 text-base text-slate-900">
+              <div className="space-y-4 text-base text-slate-900 dark:text-slate-100">
                 <div>
-                  <div className="text-xs uppercase tracking-wide text-slate-500 mb-2">Meta</div>
+                  <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">Meta</div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div><span className="text-slate-600">Patient:</span> <span className="font-medium">{extracted?.meta?.patientName || '—'}</span></div>
-                    <div><span className="text-slate-600">Patient ID:</span> <span className="font-medium">{extracted?.meta?.patientId || '—'}</span></div>
-                    <div><span className="text-slate-600">Date:</span> <span className="font-medium">{extracted?.meta?.date || '—'}</span></div>
+                    <div><span className="text-slate-600 dark:text-slate-400">Patient:</span> <span className="font-medium">{extracted?.meta?.patientName || '—'}</span></div>
+                    <div><span className="text-slate-600 dark:text-slate-400">Patient ID:</span> <span className="font-medium">{extracted?.meta?.patientId || '—'}</span></div>
+                    <div><span className="text-slate-600 dark:text-slate-400">Date:</span> <span className="font-medium">{extracted?.meta?.date || '—'}</span></div>
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs uppercase tracking-wide text-slate-500 mb-2">Labs</div>
+                  <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">Labs</div>
                   {!extracted?.labs?.length ? (
-                    <div className="text-slate-700">No labs found</div>
+                    <div className="text-slate-700 dark:text-slate-300">No labs found</div>
                   ) : (
-                    <div className="overflow-x-auto border border-slate-200 rounded">
+                    <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded">
                       <table className="min-w-full text-left">
-                        <thead className="bg-slate-50 text-slate-700">
+                        <thead className="bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                           <tr>
-                            <th className="px-3 py-2 border-b border-slate-200">Name</th>
-                            <th className="px-3 py-2 border-b border-slate-200">Value</th>
-                            <th className="px-3 py-2 border-b border-slate-200">Unit</th>
-                            <th className="px-3 py-2 border-b border-slate-200">Confidence</th>
+                            <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-700">Name</th>
+                            <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-700">Value</th>
+                            <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-700">Unit</th>
+                            <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-700">Confidence</th>
                           </tr>
                         </thead>
                         <tbody>
                           {extracted.labs.map((lab, idx) => (
-                            <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                              <td className="px-3 py-2 capitalize text-slate-900">{lab.name}</td>
-                              <td className="px-3 py-2 text-slate-900">{lab.value ?? '—'}</td>
-                              <td className="px-3 py-2 text-slate-900">{lab.unit || '—'}</td>
-                              <td className="px-3 py-2 text-slate-900">{typeof lab.confidence === 'number' ? `${Math.round(lab.confidence * 100)}%` : '—'}</td>
+                            <tr key={idx} className={idx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-800/60'}>
+                              <td className="px-3 py-2 capitalize text-slate-900 dark:text-slate-100">{lab.name}</td>
+                              <td className="px-3 py-2 text-slate-900 dark:text-slate-100">{lab.value ?? '—'}</td>
+                              <td className="px-3 py-2 text-slate-900 dark:text-slate-100">{lab.unit || '—'}</td>
+                              <td className="px-3 py-2 text-slate-900 dark:text-slate-100">{typeof lab.confidence === 'number' ? `${Math.round(lab.confidence * 100)}%` : '—'}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -512,13 +512,13 @@ export default function UploadReport() {
                 {(extracted?.diagnoses?.length || extracted?.medications?.length) ? (
                   <div className="grid md:grid-cols-2 gap-4">
                     <div>
-                      <div className="text-xs uppercase tracking-wide text-slate-500 mb-2">Diagnoses</div>
+                      <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">Diagnoses</div>
                       <ul className="list-disc pl-5">
                         {(extracted.diagnoses || []).map((d, i) => <li key={i}>{d}</li>)}
                       </ul>
                     </div>
                     <div>
-                      <div className="text-xs uppercase tracking-wide text-slate-500 mb-2">Medications</div>
+                      <div className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">Medications</div>
                       <ul className="list-disc pl-5">
                         {(extracted.medications || []).map((m, i) => <li key={i}>{m}</li>)}
                       </ul>

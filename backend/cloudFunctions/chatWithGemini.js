@@ -1,19 +1,21 @@
 const { chatbotAgent } = require('../agents/chatbotAgent');
-const { getRecentCheckins } = require('../services/firebaseService');
+const { getRecentCheckins, getAllCheckins } = require('../services/firebaseService');
 
 module.exports = async function chatWithGemini(req, res) {
   try {
     const { messages = [], options = {} } = req.body || {};
 
     // Determine user id (prefer authenticated user; fallback to header for dev)
-    const userId = (req.user && req.user.uid) || req.headers['x-user-id'] || null;
+    const userId = (req.user && req.user.uid) || req.headers['x-user-id'] || options.userId || null;
 
     let systemPrompt = options.systemPrompt;
 
-    // If requested, fetch recent check-ins and inject concise summary into system prompt
+    // If requested, fetch check-ins and inject context
     if (options.useCheckins && userId) {
       try {
-        const checkins = await getRecentCheckins(userId, options.checkinLimit || 7);
+        const checkins = options.useAllCheckins
+          ? await getAllCheckins(userId, options.checkinMax || 365)
+          : await getRecentCheckins(userId, options.checkinLimit || 7);
         if (Array.isArray(checkins) && checkins.length > 0) {
           const latest = checkins[0];
           const formatDate = (d) => {
@@ -46,8 +48,20 @@ module.exports = async function chatWithGemini(req, res) {
           else if (recent7 >= 2) trendFreq = 'Intermittent (2-4/7)';
           const historyLine = `History: ${historyCount} recent check-ins; cadence: ${trendFreq}.`;
 
-          const prefix = `You are a health assistant. Use the user's recent daily check-ins to ground answers. If the user asks about their health, reference the latest check-in when relevant, avoid speculation, and encourage clinical follow-up for red-flag symptoms.`;
-          const context = `${prefix}\n${historyLine}\n${latestSummary}`;
+          const prefix = `You are a health assistant. Use the user's daily check-ins to ground answers. If the user asks about their health, reference the latest check-in when relevant, avoid speculation, and encourage clinical follow-up for red-flag symptoms.`;
+          let context = `${prefix}\n${historyLine}\n${latestSummary}`;
+
+          // Optionally include compact JSON of all check-ins for personalization
+          if (options.useAllCheckins) {
+            const compact = checkins.map(c => ({
+              id: c.id,
+              date: (() => { try { const ts = (c.date && c.date.toDate) ? c.date.toDate() : (c.date?._seconds ? new Date(c.date._seconds * 1000) : new Date(c.date)); return ts.toISOString().slice(0,10);} catch(_) { return 'recent'; } })(),
+              answers: c.answers,
+              notes: c.notes || null
+            }));
+            const json = JSON.stringify(compact).slice(0, options.checkinsCharLimit || 12000);
+            context += `\nAll check-ins (compact JSON, newest first): ${json}`;
+          }
           systemPrompt = systemPrompt ? `${systemPrompt}\n\n${context}` : context;
         }
       } catch (_) {

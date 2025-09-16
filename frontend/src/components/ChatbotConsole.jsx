@@ -12,6 +12,7 @@ export default function ChatbotConsole({ compact = false }) {
   const { notify } = useToast();
   const storageKey = useMemo(() => `chat:${user?.uid || 'anon'}:messages`, [user?.uid]);
   const prefKey = useMemo(() => `chat:${user?.uid || 'anon'}:useCheckins`, [user?.uid]);
+  const prefAllKey = useMemo(() => `chat:${user?.uid || 'anon'}:useAllCheckins`, [user?.uid]);
 
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -27,6 +28,7 @@ export default function ChatbotConsole({ compact = false }) {
     'What are next steps for follow-up?'
   ]), []);
   const [useCheckins, setUseCheckins] = useState(true);
+  const [useAllCheckins, setUseAllCheckins] = useState(false);
 
   useEffect(() => {
     // load from localStorage on mount and when user changes
@@ -42,12 +44,15 @@ export default function ChatbotConsole({ compact = false }) {
       const rawPref = localStorage.getItem(prefKey);
       if (rawPref === 'true' || rawPref === 'false') setUseCheckins(rawPref === 'true');
       else setUseCheckins(true);
+      const rawAll = localStorage.getItem(prefAllKey);
+      if (rawAll === 'true' || rawAll === 'false') setUseAllCheckins(rawAll === 'true');
+      else setUseAllCheckins(false);
     } catch (_) {
       setMessages([]);
     }
     // reset expanded states on user change
     setExpandedIds({});
-  }, [storageKey, prefKey]);
+  }, [storageKey, prefKey, prefAllKey]);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
@@ -60,6 +65,9 @@ export default function ChatbotConsole({ compact = false }) {
   useEffect(() => {
     try { localStorage.setItem(prefKey, String(useCheckins)); } catch (_) {}
   }, [useCheckins, prefKey]);
+  useEffect(() => {
+    try { localStorage.setItem(prefAllKey, String(useAllCheckins)); } catch (_) {}
+  }, [useAllCheckins, prefAllKey]);
 
   const canSend = useMemo(() => input.trim().length > 0 && !loading, [input, loading]);
   const keyMissing = useMemo(() => {
@@ -77,7 +85,7 @@ export default function ChatbotConsole({ compact = false }) {
     setInput('');
     setLoading(true);
     try {
-      const payload = { messages: nextMessages, options: { maxOutputTokens: 512, useCheckins, checkinLimit: 7 } };
+      const payload = { messages: nextMessages, options: { maxOutputTokens: 512, useCheckins, checkinLimit: 7, useAllCheckins, checkinMax: 365, userId: user?.uid || undefined } };
       const abort = new AbortController();
       setController(abort);
       const data = await chatWithGeminiApi(payload, { signal: abort.signal });
@@ -318,15 +326,27 @@ export default function ChatbotConsole({ compact = false }) {
           </div>
         </div>
         <div className="mt-2 flex items-center justify-between">
-          <label className="inline-flex items-center gap-2 text-[12px] text-slate-600 dark:text-slate-300">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded border-slate-300 dark:border-slate-700"
-              checked={useCheckins}
-              onChange={e => setUseCheckins(e.target.checked)}
-            />
-            Use my daily check-ins for answers
-          </label>
+          <div className="flex items-center gap-4">
+            <label className="inline-flex items-center gap-2 text-[12px] text-slate-600 dark:text-slate-300">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-slate-300 dark:border-slate-700"
+                checked={useCheckins}
+                onChange={e => setUseCheckins(e.target.checked)}
+              />
+              Use my daily check-ins for answers
+            </label>
+            <label className="inline-flex items-center gap-2 text-[12px] text-slate-600 dark:text-slate-300">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-slate-300 dark:border-slate-700"
+                checked={useAllCheckins}
+                onChange={e => setUseAllCheckins(e.target.checked)}
+                disabled={!useCheckins}
+              />
+              Include all check-ins (compact)
+            </label>
+          </div>
           {compact ? (
             <div className="flex items-center gap-2">
               {loading ? (
