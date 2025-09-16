@@ -316,6 +316,7 @@ export default function DailyCheckin() {
               </div>
             ) : (
               <form onSubmit={onSubmit} className="space-y-6">
+                <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">Daily Symptom Tracking MCQs</div>
                 {/* New MCQ set */}
                 {[
                   { key: 'ns_q1', title: 'Stomach / Abdominal Pain Today', opts: ['None','Mild – occasional discomfort','Moderate – noticeable, affects tasks','Severe – persistent pain'] },
@@ -354,6 +355,9 @@ export default function DailyCheckin() {
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Add notes for today (optional)</label>
                   <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Type anything noteworthy about your health today..." />
                 </div>
+
+                {/* Hide legacy sections below to avoid duplicate questions */}
+                <div className="hidden">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-brand-600 text-white text-[10px]">1</span>
