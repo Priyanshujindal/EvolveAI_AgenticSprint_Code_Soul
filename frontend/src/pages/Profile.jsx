@@ -7,6 +7,7 @@ import { auth, db, storage } from '../firebase';
 import { updateProfile } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { formatDate } from '../utils/formatDate';
 
 export default function Profile() {
   const { user } = useAuth();
@@ -18,6 +19,19 @@ export default function Profile() {
   const [uploading, setUploading] = useState(false);
   const [fileError, setFileError] = useState('');
   const [previewURL, setPreviewURL] = useState('');
+  const [userDoc, setUserDoc] = useState(null);
+
+  function toDate(value) {
+    try {
+      if (!value) return null;
+      if (typeof value.toDate === 'function') return value.toDate();
+      if (typeof value.seconds === 'number') return new Date(value.seconds * 1000);
+      const d = new Date(value);
+      return Number.isNaN(d.getTime()) ? null : d;
+    } catch (_) {
+      return null;
+    }
+  }
 
   useEffect(() => {
     let mounted = true;
@@ -30,6 +44,15 @@ export default function Profile() {
         if (!mounted) return;
         setDisplayName(user.displayName || data.displayName || '');
         setPhotoURL(user.photoURL || data.photoURL || '');
+        setUserDoc({
+          uid: user.uid,
+          email: user.email || data.email || null,
+          phoneNumber: user.phoneNumber || data.phoneNumber || null,
+          providerIds: (user.providerData || []).map(p => p.providerId),
+          role: data.role || 'user',
+          createdAt: toDate(data.createdAt) || null,
+          updatedAt: toDate(data.updatedAt) || null,
+        });
       } catch (_) {}
     }
     load();
@@ -45,12 +68,18 @@ export default function Profile() {
       let finalPhotoURL = photoURL || null;
       if (file && storage) {
         setUploading(true);
-        const ext = file.name && file.name.includes('.') ? file.name.split('.').pop() : 'jpg';
-        const path = `avatars/${user.uid}/${Date.now()}.${ext}`;
-        const ref = storageRef(storage, path);
-        await uploadBytes(ref, file, { contentType: file.type || 'image/jpeg' });
-        finalPhotoURL = await getDownloadURL(ref);
-        setUploading(false);
+        try {
+          const ext = file.name && file.name.includes('.') ? file.name.split('.').pop() : 'jpg';
+          const path = `avatars/${user.uid}/${Date.now()}.${ext}`;
+          const ref = storageRef(storage, path);
+          await uploadBytes(ref, file, { contentType: file.type || 'image/jpeg' });
+          finalPhotoURL = await getDownloadURL(ref);
+        } catch (err) {
+          console.error('[Profile] Upload failed:', err);
+          throw err;
+        } finally {
+          setUploading(false);
+        }
       }
       await updateProfile(auth.currentUser, { displayName: displayName || null, photoURL: finalPhotoURL });
       const ref = doc(db, 'users', user.uid);
@@ -58,6 +87,7 @@ export default function Profile() {
       setMessage('Profile updated');
     } catch (err) {
       setMessage(err?.message || 'Failed to update');
+      console.error('[Profile] Save failed:', err);
     } finally {
       setSaving(false);
     }
@@ -140,6 +170,21 @@ export default function Profile() {
             </form>
           </CardContent>
         </Card>
+        {userDoc ? (
+          <Card className="mt-4">
+            <CardContent>
+              <div className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
+                <div className="flex justify-between"><span className="font-medium">Email</span><span className="truncate max-w-[60%] text-right">{userDoc.email || '—'}</span></div>
+                <div className="flex justify-between"><span className="font-medium">User ID</span><span className="truncate max-w-[60%] text-right">{userDoc.uid}</span></div>
+                <div className="flex justify-between"><span className="font-medium">Phone</span><span className="truncate max-w-[60%] text-right">{userDoc.phoneNumber || '—'}</span></div>
+                <div className="flex justify-between"><span className="font-medium">Providers</span><span className="truncate max-w-[60%] text-right">{(userDoc.providerIds || []).length ? userDoc.providerIds.join(', ') : '—'}</span></div>
+                <div className="flex justify-between"><span className="font-medium">Role</span><span className="truncate max-w-[60%] text-right">{userDoc.role}</span></div>
+                <div className="flex justify-between"><span className="font-medium">Created</span><span className="truncate max-w-[60%] text-right">{userDoc.createdAt ? formatDate(userDoc.createdAt) : '—'}</span></div>
+                <div className="flex justify-between"><span className="font-medium">Updated</span><span className="truncate max-w-[60%] text-right">{userDoc.updatedAt ? formatDate(userDoc.updatedAt) : '—'}</span></div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
     </div>
   );

@@ -15,6 +15,7 @@ import Hero from '../components/Hero';
 import StatCard from '../components/StatCard';
 import QuickActions from '../components/QuickActions';
 import ActivityFeed from '../components/ActivityFeed';
+import { aiHealth } from '../services/api';
 
 export default function Dashboard() {
   const { notify } = useToast();
@@ -29,6 +30,8 @@ export default function Dashboard() {
   const [explainMethod, setExplainMethod] = useState('auto');
   const [useScipyWinsorize, setUseScipyWinsorize] = useState(true);
   const [forceLocal, setForceLocal] = useState(false);
+  const [aiStatus, setAiStatus] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
   // Persist/load preferences
   React.useEffect(() => {
@@ -41,6 +44,33 @@ export default function Dashboard() {
         if (typeof saved.forceLocal === 'boolean') setForceLocal(saved.forceLocal);
       }
     } catch (_) {}
+  }, []);
+  async function refreshAiHealth() {
+    try {
+      setAiLoading(true);
+      const r = await aiHealth();
+      setAiStatus(r);
+    } catch (_) {
+      setAiStatus({ ok: true, python: { available: false } });
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setAiLoading(true);
+        const r = await aiHealth();
+        if (mounted) setAiStatus(r);
+      } catch (_) {
+        if (mounted) setAiStatus({ ok: true, python: { available: false } });
+      } finally {
+        if (mounted) setAiLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
   }, []);
   React.useEffect(() => {
     try {
@@ -61,6 +91,9 @@ export default function Dashboard() {
         forceLocal
       });
       setResult(data);
+      if (forceLocal && aiStatus && aiStatus.python && aiStatus.python.available === false) {
+        notify('Python AI unavailable. Used local analysis.', 'info');
+      }
     } catch (e) {
       setError(String(e?.message || e));
     } finally {
@@ -117,6 +150,27 @@ export default function Dashboard() {
         subtitle="Run a quick analysis, review trends, and act on red flags."
         cta={<div className="flex gap-3 items-center"><Button onClick={analyzeMock}>Run Analysis</Button><Button variant="secondary" onClick={locateAmbulance}>Find Ambulance</Button></div>}
       />
+      <div className="mb-3">
+        <div className="text-sm text-slate-700 dark:text-slate-300 inline-flex items-center gap-3">
+          {aiLoading ? (
+            <span className="inline-flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-slate-400 animate-pulse" /> Checking AI service…</span>
+          ) : (
+            <>
+              <span className="inline-flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${aiStatus?.python?.available ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                Python AI: {aiStatus?.python?.available ? 'Available' : 'Unavailable'}
+              </span>
+              {aiStatus?.python?.available && (
+                <>
+                  <span className="text-xs">Torch: {String(!!aiStatus?.python?.torchAvailable)}</span>
+                  <span className="text-xs">CUDA: {String(!!aiStatus?.python?.cudaAvailable)}</span>
+                </>
+              )}
+              <Button size="sm" variant="secondary" onClick={refreshAiHealth}>Retry</Button>
+            </>
+          )}
+        </div>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <Card>
           <CardHeader>
@@ -143,8 +197,8 @@ export default function Dashboard() {
                   className="border rounded px-2 py-1 w-full"
                 >
                   <option value="auto">Auto</option>
-                  <option value="captum">Captum</option>
-                  <option value="shap">SHAP</option>
+                  <option value="captum" disabled={!aiStatus?.python?.captumAvailable}>Captum</option>
+                  <option value="shap" disabled={!aiStatus?.python?.shapAvailable}>SHAP</option>
                   <option value="none">None</option>
                 </select>
               </div>
@@ -236,7 +290,17 @@ export default function Dashboard() {
                 <CardTitle>Explainability</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-sm text-slate-600 mb-3">Method: {result.data.explainability.method}</div>
+                <div className="text-sm text-slate-600 mb-3">Method: {result.data.explainability.method}
+                  {result?.data?.explainability?.method === 'captum' && (
+                    <span className="ml-2 inline-block text-xs px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">Captum</span>
+                  )}
+                  {result?.data?.explainability?.method === 'shap' && (
+                    <span className="ml-2 inline-block text-xs px-2 py-0.5 rounded bg-indigo-100 text-indigo-700">SHAP</span>
+                  )}
+                  {result?.data?.explainability?.method === 'auto' && (
+                    <span className="ml-2 inline-block text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-700">Auto</span>
+                  )}
+                </div>
                 <div className="overflow-auto">
                   <table className="min-w-full text-sm">
                     <thead>
@@ -268,6 +332,9 @@ export default function Dashboard() {
                     </tbody>
                   </table>
                 </div>
+                {Number.isFinite(result?.data?.latencyMs) && (
+                  <div className="mt-3 text-xs text-slate-500">Python analysis latency: {result.data.latencyMs} ms</div>
+                )}
               </CardContent>
             </Card>
           )}

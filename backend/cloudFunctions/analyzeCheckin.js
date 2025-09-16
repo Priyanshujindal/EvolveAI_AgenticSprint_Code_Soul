@@ -9,12 +9,13 @@ module.exports = async function analyzeCheckin(req, res) {
   try {
     const payload = req.body || {};
     let advisory = null;
-    const usePython = AI_SERVICE_URL;
+    // Prefer configured URL; in dev, auto-try localhost if env not set
+    const usePython = AI_SERVICE_URL || 'http://localhost:8000';
     const forceLocal = !!(payload && payload.payload && payload.payload.forceLocal);
     if (usePython && !forceLocal) {
       try {
         const body = {
-          notes: 'daily checkin',
+          notes: payload?.payload?.notes || 'daily checkin',
           vitals: {},
           labs: {},
           topK: payload?.payload?.topK,

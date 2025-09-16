@@ -198,6 +198,12 @@ app.post('/api/analyze', async (req, res) => {
           { timeout: 10000 }
         );
         const advisory = await advisoryAgent(data);
+        // Optionally persist advisory for auditing if user context is available
+        try {
+          const { saveAnalysis } = require('./services/firebaseService');
+          const userId = (req.user && req.user.uid) || 'anonymous';
+          await saveAnalysis(userId, { input: req.body || {}, result: advisory });
+        } catch (_) {}
         return res.json({ success: true, data: advisory });
       } catch (e) {
         // Fall back to local analysis if Python service is unavailable
@@ -221,10 +227,31 @@ app.post('/api/analyze', async (req, res) => {
   }
 });
 
+// Proxy PDF extraction (Python service)
+app.post('/api/pdf-extract', async (req, res) => {
+  try {
+    const { AI_SERVICE_URL } = require('./config/config');
+    const usePython = AI_SERVICE_URL;
+    if (!usePython) {
+      return res.status(503).json({ ok: false, error: 'AI service not configured' });
+    }
+    const body = req.body || {};
+    if (!body.url || typeof body.url !== 'string') {
+      return res.status(400).json({ ok: false, error: 'Missing url' });
+    }
+    const payload = { url: body.url, use_ocr: body.useOcr, lang: body.lang };
+    const { data } = await httpClient.post(`${usePython.replace(/\/$/, '')}/extract_from_pdf`, payload, { timeout: 20000 });
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e?.message || String(e) });
+  }
+});
+
 // Proxy health for AI service and indicate preferred routing
 app.get('/api/ai/health', async (_req, res) => {
   try {
-    const usePython = AI_SERVICE_URL;
+    // Prefer configured URL; in dev, auto-try localhost if env not set
+    const usePython = AI_SERVICE_URL || 'http://localhost:8000';
     if (!usePython) return res.json({ ok: true, python: { available: false } });
     const { data } = await httpClient.get(`${usePython.replace(/\/$/, '')}/health`, { timeout: 4000 });
     return res.json({ ok: true, python: { available: true, ...data } });

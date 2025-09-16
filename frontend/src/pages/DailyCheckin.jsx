@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { addDoc, collection, getDocs, query, where, serverTimestamp, Timestamp, orderBy, limit } from 'firebase/firestore';
 import RiskChart from '../components/RiskChart';
-import { analyzeCheckinApi, aiHealth } from '../services/api';
+import { analyzeCheckinApi, aiHealth, fetchRiskSeries } from '../services/api';
 
 export default function DailyCheckin() {
   const { notify } = useToast();
@@ -34,6 +34,7 @@ export default function DailyCheckin() {
   const [history, setHistory] = useState([]);
   const [points, setPoints] = useState([]);
   const [trendLabel, setTrendLabel] = useState('');
+  const [labels, setLabels] = useState([]);
   const [notes, setNotes] = useState('');
   const [aiStatus, setAiStatus] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
@@ -60,8 +61,8 @@ export default function DailyCheckin() {
   }, [topK, explainMethod, useScipyWinsorize, forceLocal]);
 
   const isValid = useMemo(() => {
-    // New 10-question MCQ set
-    const requiredKeys = ['ns_q1','ns_q2','ns_q3','ns_q4','ns_q5','ns_q6','ns_q7','ns_q8','ns_q9','ns_q10'];
+    // New MCQ set
+    const requiredKeys = ['ns_q1','ns_q2','ns_q3','ns_q4','ns_q5','ns_q6','ns_q7','ns_q8','ns_q9','ns_q10','ns_q11','ns_q12'];
     for (const k of requiredKeys) {
       if (!answers[k]) return false;
     }
@@ -127,13 +128,14 @@ export default function DailyCheckin() {
     })[v] ?? 0.5;
     const parts = [
       map4(a.ns_q1), map4(a.ns_q2), map4(a.ns_q3), map4(a.ns_q4), map4(a.ns_q5),
-      map4(a.ns_q6), map4(a.ns_q7), map4(a.ns_q8), map4(a.ns_q9), map4(a.ns_q10)
+      map4(a.ns_q6), map4(a.ns_q7), map4(a.ns_q8), map4(a.ns_q9), map4(a.ns_q10),
+      map4(a.ns_q11), map4(a.ns_q12)
     ];
     const avg = parts.reduce((s, v) => s + v, 0) / parts.length;
     return Math.max(0, Math.min(1, Number(avg.toFixed(3))));
   }
 
-  // Load recent history and compute trend
+  // Load recent history and compute trend (prefers Python risk if available)
   useEffect(() => {
     async function loadHistory() {
       if (!db || !user) return;
@@ -143,7 +145,23 @@ export default function DailyCheckin() {
         const snap = await getDocs(q);
         const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         const reversed = items.slice().reverse();
-        const pts = reversed.map(it => scoreFromAnswers(it.answers));
+        let pts = reversed.map(it => scoreFromAnswers(it.answers));
+        let lbls = reversed.map(it => (it?.date?.toDate ? it.date.toDate().toLocaleDateString() : ''));
+
+        // If Python AI is available, request risk series and use it
+        try {
+          if (aiStatus?.python?.available) {
+            const r = await fetchRiskSeries(user.uid);
+            if (r && r.ok && Array.isArray(r.points) && r.points.length === reversed.length) {
+              pts = r.points;
+              if (Array.isArray(r.labels) && r.labels.length === reversed.length) {
+                lbls = r.labels.map(s => {
+                  try { return new Date(s).toLocaleDateString(); } catch (_) { return s; }
+                });
+              }
+            }
+          }
+        } catch (_) {}
         const n = pts.length;
         let trend = '';
         if (n >= 6) {
@@ -156,6 +174,7 @@ export default function DailyCheckin() {
         }
         setHistory(items);
         setPoints(pts);
+        setLabels(lbls);
         setTrendLabel(trend);
       } catch (err) {
         console.error('[DailyCheckin] loadHistory error:', err);
@@ -222,6 +241,8 @@ export default function DailyCheckin() {
           ns_q8: answers.ns_q8,
           ns_q9: answers.ns_q9,
           ns_q10: answers.ns_q10,
+          ns_q11: answers.ns_q11,
+          ns_q12: answers.ns_q12,
         },
         analyzed: false,
         notes: notes || null,
@@ -329,6 +350,8 @@ export default function DailyCheckin() {
                   { key: 'ns_q8', title: 'Changes in Urination Today', opts: ['Normal','Slight – minor discomfort or frequency change','Moderate – frequent or painful urination','Severe – inability to urinate normally or severe discomfort'] },
                   { key: 'ns_q9', title: 'Skin Changes / Wounds Today', opts: ['None','Minor – small rashes, bruises, or pimples','Noticeable – persistent rash, sores, or swelling','Severe – bleeding, large lesions, or non-healing wounds'] },
                   { key: 'ns_q10', title: 'Dizziness or Fainting Today', opts: ['None','Mild – occasional lightheadedness','Moderate – dizziness affecting tasks','Severe – fainting or inability to stand'] },
+                  { key: 'ns_q11', title: 'Sleep / Insomnia Today', opts: ['Slept well – no trouble falling or staying asleep','Mild difficulty – took longer than usual to fall asleep','Moderate difficulty – frequent waking or poor sleep quality','Severe – hardly slept or very restless night'] },
+                  { key: 'ns_q12', title: 'Hot Flashes / Sudden Warmth Today', opts: ['None – no unusual warmth','Mild – occasional warmth or flushing','Moderate – noticeable episodes affecting comfort','Severe – frequent or intense hot flashes'] },
                 ].map((q, idx) => (
                   <div key={q.key}>
                     <div className="flex items-center gap-2 mb-1">
@@ -482,6 +505,9 @@ export default function DailyCheckin() {
                   </div>
                 </div>
 
+                {/* End hidden legacy section wrapper */}
+                </div>
+
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-xs text-slate-500">Complete all sections to enable saving.</div>
                   <Button type="submit" disabled={isSubmitting || !isValid || authLoading}>
@@ -507,7 +533,7 @@ export default function DailyCheckin() {
                   Overall trend: <span className={`font-medium ${trendLabel === 'Worsening' ? 'text-red-600' : trendLabel === 'Improving' ? 'text-emerald-600' : 'text-slate-700 dark:text-slate-200'}`}>{trendLabel || 'Not enough data'}</span>
                 </div>
                 <div className="bg-white dark:bg-slate-950 rounded-md p-3 border border-slate-200 dark:border-slate-800">
-                  <RiskChart points={points} />
+                  <RiskChart points={points} labels={labels} title={aiStatus?.python?.available ? 'AI risk' : 'Risk'} yRange={{ min: 0, max: 1 }} />
                 </div>
                 <ul className="divide-y divide-slate-200 dark:divide-slate-800 text-sm">
                   {history.slice(0, 10).map((h, i) => (

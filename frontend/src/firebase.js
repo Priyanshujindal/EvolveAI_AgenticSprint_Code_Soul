@@ -3,6 +3,14 @@ import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { getAnalytics, isSupported as analyticsIsSupported } from 'firebase/analytics';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+// App Check helps prevent abuse; if enforced on Storage, missing tokens can look like CORS failures
+let initializeAppCheckFn = null;
+let ReCaptchaV3ProviderCtor = null;
+try {
+  // Lazy import shape to avoid bundler issues if app-check is unused
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  ({ initializeAppCheck: initializeAppCheckFn, ReCaptchaV3Provider: ReCaptchaV3ProviderCtor } = require('firebase/app-check'));
+} catch (_) {}
 
 // Expect environment variables to be provided via Vite
 // VITE_FIREBASE_API_KEY, VITE_FIREBASE_AUTH_DOMAIN, VITE_FIREBASE_PROJECT_ID,
@@ -18,6 +26,27 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
+// Normalize common misconfigurations for storageBucket to avoid SDK hitting wrong CORS endpoints
+function normalizeStorageBucket(bucket) {
+  try {
+    if (!bucket) return bucket;
+    let value = String(bucket).trim();
+    // If a full URL was pasted, extract the hostname
+    if (/^https?:\/\//i.test(value)) {
+      try { value = new URL(value).hostname; } catch (_) {}
+    }
+    // Replace new domain copy-paste with the expected bucket host
+    if (/\.firebasestorage\.app$/i.test(value)) {
+      value = value.replace(/\.firebasestorage\.app$/i, '.appspot.com');
+    }
+    // Remove path parts if any slipped in
+    value = value.split('/')[0];
+    return value;
+  } catch (_) {
+    return bucket;
+  }
+}
+
 function isConfigValid(cfg) {
   return !!(cfg && cfg.apiKey && cfg.authDomain && cfg.projectId && cfg.appId);
 }
@@ -32,10 +61,30 @@ try {
   if (!isConfigValid(firebaseConfig)) {
     throw new Error('Missing Firebase env configuration');
   }
-  app = initializeApp(firebaseConfig);
+  // Apply normalization safely before init
+  const normalizedBucketHost = normalizeStorageBucket(firebaseConfig.storageBucket) || (firebaseConfig.projectId ? `${firebaseConfig.projectId}.appspot.com` : undefined);
+  const cfg = { ...firebaseConfig, storageBucket: normalizedBucketHost };
+  app = initializeApp(cfg);
   auth = getAuth(app);
   db = getFirestore(app);
-  storage = getStorage(app);
+  // Force the SDK to use the exact bucket via gs:// URL (avoids .firebasestorage.app confusion)
+  storage = normalizedBucketHost ? getStorage(app, `gs://${normalizedBucketHost}`) : getStorage(app);
+
+  // Initialize App Check if configured, useful when enforcement is ON for Storage
+  try {
+    const siteKey = import.meta.env.VITE_RECAPTCHA_V3_SITE_KEY;
+    if (initializeAppCheckFn && ReCaptchaV3ProviderCtor && siteKey) {
+      if (import.meta.env.DEV) {
+        // Enable debug token on localhost automatically
+        // eslint-disable-next-line no-undef
+        self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+      }
+      initializeAppCheckFn(app, {
+        provider: new ReCaptchaV3ProviderCtor(siteKey),
+        isTokenAutoRefreshEnabled: true,
+      });
+    }
+  } catch (_) {}
   // Initialize Analytics only when measurementId is provided and environment supports it
   if (firebaseConfig.measurementId) {
     try {

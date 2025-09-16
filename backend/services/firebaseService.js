@@ -6,6 +6,28 @@ try {
   }
 } catch (_) {}
 
+async function getRecentCheckins(userId, limit = 7) {
+  if (!admin || !userId) return [];
+  try {
+    const db = admin.firestore();
+    const ref = db
+      .collection('users')
+      .doc(userId)
+      .collection('dailyCheckins')
+      .orderBy('date', 'desc')
+      .limit(Math.max(1, Math.min(30, Number(limit) || 7)));
+    const snap = await ref.get();
+    const items = [];
+    snap.forEach(doc => {
+      const d = doc.data() || {};
+      items.push({ id: doc.id, date: d.date, answers: d.answers, notes: d.notes || null });
+    });
+    return items;
+  } catch (_) {
+    return [];
+  }
+}
+
 async function saveAnalysis(userId, analysis) {
   if (!admin) return { id: 'mock-id', userId, analysis };
   const db = admin.firestore();
@@ -43,6 +65,6 @@ async function saveRetrainingRecord(userId, feedback) {
   }
 }
 
-module.exports = { saveAnalysis, saveFeedback, saveRetrainingRecord };
+module.exports = { saveAnalysis, saveFeedback, saveRetrainingRecord, getRecentCheckins };
 
 

@@ -40,6 +40,25 @@ export async function aiHealth() {
   return res.json();
 }
 
+export async function pdfExtract(url, { useOcr, lang } = {}) {
+  const res = await fetch(`${BASE}/api/pdf-extract`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...DEV_HEADERS },
+    body: JSON.stringify({ url, useOcr, lang })
+  });
+  const text = await res.text();
+  let json = {};
+  try { json = text ? JSON.parse(text) : {}; } catch (_) { json = {}; }
+  if (!res.ok) {
+    const msg = json?.error || json?.message || `HTTP ${res.status}`;
+    const err = new Error(msg);
+    err.status = res.status;
+    err.body = json;
+    throw err;
+  }
+  return json;
+}
+
 export async function processReport(file) {
   const form = new FormData();
   form.append('file', file);
@@ -48,7 +67,17 @@ export async function processReport(file) {
     headers: { ...DEV_HEADERS },
     body: form
   });
-  return res.json();
+  const text = await res.text();
+  let json = {};
+  try { json = text ? JSON.parse(text) : {}; } catch (_) { json = {}; }
+  if (!res.ok) {
+    const msg = json?.error || json?.message || `HTTP ${res.status}`;
+    const err = new Error(msg);
+    err.status = res.status;
+    err.body = json;
+    throw err;
+  }
+  return json;
 }
 
 // Progress-capable upload with cancel support using XMLHttpRequest
@@ -89,7 +118,12 @@ export function processReportWithProgress(file, { onProgress, signal } = {}) {
             let message = 'Upload failed';
             try {
               const err = JSON.parse(xhr.responseText || '{}');
-              message = err?.message || message;
+              message = err?.error || err?.message || message;
+              // attach details for UI hints
+              const error = new Error(message);
+              error.status = xhr.status;
+              error.body = err;
+              return reject(error);
             } catch (_) {}
             const error = new Error(message);
             error.status = xhr.status;
@@ -149,12 +183,33 @@ export async function submitFeedback(feedback, userId = 'demo') {
 export async function chatWithGeminiApi(payload, { signal } = {}) {
   const res = await fetch(`${BASE}/functions/chat`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-user-id': 'demo' },
+    headers: { 'Content-Type': 'application/json', ...(await buildAuthHeaders()) },
     body: JSON.stringify(payload),
     signal
   });
   const text = await res.text();
   let json = null;
+  try { json = text ? JSON.parse(text) : {}; } catch (_) { json = {}; }
+  if (!res.ok) {
+    const msg = json?.error || json?.message || `HTTP ${res.status}`;
+    const err = new Error(msg);
+    err.status = res.status;
+    err.body = json;
+    throw err;
+  }
+  return json;
+}
+
+export async function fetchRiskSeries(userId) {
+  const url = new URL(`${BASE}/functions/riskSeries`);
+  if (userId) {
+    url.searchParams.set('userId', String(userId));
+  }
+  const res = await fetch(url.toString(), {
+    headers: { ...(await buildAuthHeaders()) }
+  });
+  const text = await res.text();
+  let json = {};
   try { json = text ? JSON.parse(text) : {}; } catch (_) { json = {}; }
   if (!res.ok) {
     const msg = json?.error || json?.message || `HTTP ${res.status}`;

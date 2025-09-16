@@ -1,0 +1,22 @@
+{
+  "watch": [
+    "index.js",
+    "agents",
+    "cloudFunctions",
+    "config",
+    "middleware",
+    "services",
+    "utils",
+    "validations"
+  ],
+  "ext": "js,json",
+  "ignore": [
+    "node_modules",
+    "**/*.test.js",
+    "**/__tests__/**",
+    "models/**"
+  ],
+  "env": {
+    "NODE_ENV": "development"
+  }
+}
