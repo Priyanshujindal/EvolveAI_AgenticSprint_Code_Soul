@@ -15,4 +15,21 @@
 
 @layer components {
   .container-page { @apply mx-auto max-w-7xl px-4 sm:px-6 lg:px-8; }
+  .chat-content { @apply text-sm leading-relaxed whitespace-pre-wrap break-words; }
+  .chat-content a { @apply underline break-all text-brand-600 dark:text-brand-300; }
+  .chat-content pre { @apply bg-slate-900 text-slate-100 p-3 rounded-md overflow-auto max-h-64; }
+  .chat-content code { @apply bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded; }
+  .fade-bottom { -webkit-mask-image: linear-gradient(to bottom, black 75%, transparent); mask-image: linear-gradient(to bottom, black 75%, transparent); }
+  .line-clamp-8 {
+    display: -webkit-box;
+    -webkit-line-clamp: 8;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .line-clamp-10 {
+    display: -webkit-box;
+    -webkit-line-clamp: 10;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
 }

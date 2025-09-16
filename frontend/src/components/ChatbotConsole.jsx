@@ -10,6 +10,7 @@ export default function ChatbotConsole() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [controller, setController] = useState(null);
+  const [expandedIds, setExpandedIds] = useState({});
   const listRef = useRef(null);
   const textareaRef = useRef(null);
   const presets = useMemo(() => ([
@@ -116,32 +117,56 @@ export default function ChatbotConsole() {
         {messages.map((m, i) => (
           <div key={i} className={`mb-3 flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`flex items-end gap-2 ${m.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-              <div className={`h-8 w-8 shrink-0 rounded-full flex items-center justify-center text-xs font-semibold ${m.role === 'user' ? 'bg-brand-600 text-white' : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-100'}`}>{m.role === 'user' ? 'You' : 'AI'}</div>
+              <div className={`hidden sm:flex h-8 w-8 shrink-0 rounded-full items-center justify-center text-xs font-semibold ${m.role === 'user' ? 'bg-brand-600 text-white' : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-100'}`}>{m.role === 'user' ? 'You' : 'AI'}</div>
               <div>
-                <div className={`group relative max-w-[70vw] sm:max-w-[60%] rounded-2xl px-3 py-2 text-sm shadow-subtle break-words ${
+                { /* determine message id and long state */ }
+                {(() => {
+                  const id = `${m.createdAt || i}-${i}`;
+                  const isLong = m.role === 'assistant' && typeof m.content === 'string' && m.content.length > 500;
+                  const isExpanded = !!expandedIds[id];
+                  return (
+                    <div className={`group relative max-w-[84vw] sm:max-w-[60%] rounded-2xl px-3 py-2 text-sm shadow-subtle break-words whitespace-pre-wrap leading-relaxed ${
                   m.role === 'user'
                     ? 'bg-brand-600 text-white rounded-br-md'
                     : 'bg-slate-100/90 dark:bg-slate-900/80 text-slate-900 dark:text-slate-100 rounded-bl-md'
                 }`}>
-                  <div>
-                    {m.role === 'assistant' ? (
-                      <div className="prose prose-sm prose-slate dark:prose-invert max-w-none">
-                        {m.content}
+                      <div>
+                        {m.role === 'assistant' ? (
+                          <div className={`chat-content select-text ${isExpanded ? '' : 'line-clamp-10'}`}>
+                            {m.content}
+                          </div>
+                        ) : (
+                          <div>{m.content}</div>
+                        )}
                       </div>
-                    ) : (
-                      <div>{m.content}</div>
-                    )}
+                      <button
+                        onClick={() => copyMessage(m.content)}
+                        title="Copy"
+                        className={`absolute -top-2 ${m.role === 'user' ? '-left-2' : '-right-2'} hidden group-hover:inline-flex items-center justify-center h-6 w-6 rounded-full bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600`}
+                      >
+                        ⧉
+                      </button>
+                    </div>
+                  );
+                })()}
+                <div className={`mt-1 flex items-center gap-2 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`text-[10px] ${m.role === 'user' ? 'text-slate-300' : 'text-slate-500 dark:text-slate-400'}`}>
+                    {m.createdAt ? formatDate(m.createdAt) : ''}
                   </div>
-                  <button
-                    onClick={() => copyMessage(m.content)}
-                    title="Copy"
-                    className={`absolute -top-2 ${m.role === 'user' ? '-left-2' : '-right-2'} hidden group-hover:inline-flex items-center justify-center h-6 w-6 rounded-full bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600`}
-                  >
-                    ⧉
-                  </button>
-                </div>
-                <div className={`mt-1 text-[10px] ${m.role === 'user' ? 'text-slate-300 text-right' : 'text-slate-500 dark:text-slate-400 text-left'}`}>
-                  {m.createdAt ? formatDate(m.createdAt) : ''}
+                  {m.role === 'assistant' && typeof m.content === 'string' && m.content.length > 500 && (
+                    (() => {
+                      const id = `${m.createdAt || i}-${i}`;
+                      const isExpanded = !!expandedIds[id];
+                      return (
+                        <button
+                          className="text-[10px] px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                          onClick={() => setExpandedIds(s => ({ ...s, [id]: !s[id] }))}
+                        >
+                          {isExpanded ? 'Collapse' : 'Expand'}
+                        </button>
+                      );
+                    })()
+                  )}
                 </div>
               </div>
             </div>

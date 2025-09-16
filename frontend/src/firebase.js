@@ -1,6 +1,8 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { getAnalytics, isSupported as analyticsIsSupported } from 'firebase/analytics';
+import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 // Expect environment variables to be provided via Vite
 // VITE_FIREBASE_API_KEY, VITE_FIREBASE_AUTH_DOMAIN, VITE_FIREBASE_PROJECT_ID,
@@ -23,6 +25,8 @@ function isConfigValid(cfg) {
 let app;
 let auth;
 let analytics;
+let db;
+let storage;
 
 try {
   if (!isConfigValid(firebaseConfig)) {
@@ -30,6 +34,8 @@ try {
   }
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
+  db = getFirestore(app);
+  storage = getStorage(app);
   // Initialize Analytics only when measurementId is provided and environment supports it
   if (firebaseConfig.measurementId) {
     try {
@@ -51,9 +57,11 @@ try {
   auth = {
     currentUser: null,
   };
+  db = null;
+  storage = null;
 }
 
-export { auth };
+export { auth, db, storage };
 
 export function observeAuthState(callback) {
   if (app && auth) {

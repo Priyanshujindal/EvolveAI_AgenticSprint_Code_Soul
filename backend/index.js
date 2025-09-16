@@ -53,12 +53,19 @@ app.use(helmet({
   contentSecurityPolicy: {
     useDefaults: true,
     directives: {
+      defaultSrc: [
+        "'self'"
+      ],
       // Use camelCase directive names per Helmet API
       connectSrc: [
         "'self'",
         'https://identitytoolkit.googleapis.com',
         'https://securetoken.googleapis.com',
         'https://www.googleapis.com',
+        'https://firebase.googleapis.com',
+        'https://oauth2.googleapis.com',
+        'https://oauthaccountmanager.googleapis.com',
+        'https://accounts.google.com',
         'https://firebaseinstallations.googleapis.com',
         'https://www.gstatic.com',
         'https://www.google-analytics.com',
@@ -72,18 +79,85 @@ app.use(helmet({
         "'unsafe-inline'",
         'https://apis.google.com',
         'https://www.googletagmanager.com',
+        'https://www.google.com',
+        'https://www.recaptcha.net',
         'https://www.gstatic.com',
         'https://www.google-analytics.com'
+      ],
+      // Some browsers differentiate element-specific script sources
+      scriptSrcElem: [
+        "'self'",
+        "'unsafe-inline'",
+        'https://apis.google.com',
+        'https://www.googletagmanager.com',
+        'https://www.google.com',
+        'https://www.recaptcha.net',
+        'https://www.gstatic.com',
+        'https://www.google-analytics.com'
+      ],
+      styleSrc: [
+        "'self'",
+        "'unsafe-inline'",
+        'https://fonts.googleapis.com',
+        'https://www.gstatic.com',
       ],
       imgSrc: [
         "'self'",
         'https://www.googletagmanager.com',
         'https://www.google-analytics.com',
+        'https://www.google.com',
+        'https://www.gstatic.com',
+        'https://lh3.googleusercontent.com',
+        'data:'
+      ],
+      fontSrc: [
+        "'self'",
+        'https://fonts.gstatic.com',
         'data:'
       ],
       frameSrc: [
         "'self'",
-        'https://apis.google.com'
+        'https://apis.google.com',
+        'https://accounts.google.com',
+        'https://agentic-hackthon.firebaseapp.com',
+        'https://*.firebaseapp.com',
+        'https://www.google.com',
+        'https://www.recaptcha.net',
+        'https://www.gstatic.com'
+      ],
+      // Some user agents still honor childSrc over frameSrc
+      childSrc: [
+        "'self'",
+        'https://apis.google.com',
+        'https://accounts.google.com',
+        'https://agentic-hackthon.firebaseapp.com',
+        'https://*.firebaseapp.com',
+        'https://www.google.com',
+        'https://www.recaptcha.net',
+        'https://www.gstatic.com'
+      ],
+      connectSrc: [
+        "'self'",
+        'https://identitytoolkit.googleapis.com',
+        'https://securetoken.googleapis.com',
+        'https://www.googleapis.com',
+        'https://firebase.googleapis.com',
+        'https://oauth2.googleapis.com',
+        'https://oauthaccountmanager.googleapis.com',
+        'https://accounts.google.com',
+        'https://firebaseinstallations.googleapis.com',
+        'https://www.gstatic.com',
+        'https://www.google-analytics.com',
+        'https://firestore.googleapis.com',
+        'https://firebasestorage.googleapis.com',
+        'https://apis.google.com',
+        'https://recaptcha.google.com',
+        'https://www.google.com',
+        'https://www.recaptcha.net',
+        'http://localhost:8080'
+      ],
+      objectSrc: [
+        "'none'"
       ],
       workerSrc: [
         "'self'",
