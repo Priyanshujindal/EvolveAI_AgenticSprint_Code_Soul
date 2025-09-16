@@ -189,10 +189,20 @@ app.post('/api/analyze', async (req, res) => {
       return res.status(400).json({ success: false, error: validation.error });
     }
     const usePython = AI_SERVICE_URL;
-    if (usePython) {
-      const { data } = await httpClient.post(`${usePython.replace(/\/$/, '')}/analyze`, req.body || {});
-      const advisory = await advisoryAgent(data);
-      return res.json({ success: true, data: advisory });
+    const forceLocal = !!(req && req.body && req.body.forceLocal);
+    if (usePython && !forceLocal) {
+      try {
+        const { data } = await httpClient.post(
+          `${usePython.replace(/\/$/, '')}/analyze`,
+          req.body || {},
+          { timeout: 10000 }
+        );
+        const advisory = await advisoryAgent(data);
+        return res.json({ success: true, data: advisory });
+      } catch (e) {
+        // Fall back to local analysis if Python service is unavailable
+        console.warn('AI service unavailable, falling back to local analysis:', e?.message || e);
+      }
     }
 
     const normalized = await ingestionAgent(req.body || {});
@@ -211,6 +221,18 @@ app.post('/api/analyze', async (req, res) => {
   }
 });
 
+// Proxy health for AI service and indicate preferred routing
+app.get('/api/ai/health', async (_req, res) => {
+  try {
+    const usePython = AI_SERVICE_URL;
+    if (!usePython) return res.json({ ok: true, python: { available: false } });
+    const { data } = await httpClient.get(`${usePython.replace(/\/$/, '')}/health`, { timeout: 4000 });
+    return res.json({ ok: true, python: { available: true, ...data } });
+  } catch (e) {
+    return res.json({ ok: true, python: { available: false, error: e?.message || String(e) } });
+  }
+});
+
 // Cloud function style endpoints
 app.post('/functions/analyzeCheckin', requireAuth, analyzeCheckin);
 app.post('/functions/processReport', requireAuth, processReport);
@@ -225,11 +247,17 @@ try {
   const distPath = path.join(__dirname, '..', 'frontend', 'dist');
   if (fs.existsSync(distPath)) {
     const expressStatic = express.static(distPath);
+    // Serve assets explicitly to avoid SPA fallback returning HTML for missing files
+    app.use('/assets', express.static(path.join(distPath, 'assets')));
     app.use(expressStatic);
     app.get('*', (req, res, next) => {
       // Avoid intercepting API routes
       if (req.path.startsWith('/api') || req.path.startsWith('/functions') || req.path.startsWith('/health')) {
         return next();
+      }
+      // If the request looks like a static file (contains a dot), do not SPA-fallback
+      if (req.path.includes('.')) {
+        return res.status(404).end();
       }
       res.sendFile(path.join(distPath, 'index.html'));
     });

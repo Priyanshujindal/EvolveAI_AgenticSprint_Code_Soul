@@ -50,28 +50,24 @@ export default function ChatbotWidget() {
         </Button>
       )}
       {open && (
-        <Card className="w-[380px] max-w-[92vw] h-[560px] max-h-[80vh] flex flex-col shadow-xl">
-          <CardHeader className="flex items-center justify-between py-3">
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <CardTitle className="text-sm">Assistive Chat</CardTitle>
+        <div className="relative w-[520px] max-w-[90vw] aspect-square rounded-full shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur">
+          <button
+            onClick={close}
+            aria-label="Close chat"
+            className="absolute top-3 right-3 h-7 w-7 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-900 dark:text-slate-100 flex items-center justify-center text-xs"
+            title="Close"
+          >
+            ✕
+          </button>
+          <span className="absolute top-3 left-3 h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+          <div className="absolute inset-0 p-5">
+            <div className="h-full w-full overflow-auto rounded-[32px]">
+              <div className="px-1">
+                <ChatbotConsole />
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={close}
-                aria-label="Close chat"
-                className="rounded-md text-xs px-2 py-1 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-900 dark:text-slate-100"
-              >
-                ✕
-              </button>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0 flex-1 overflow-hidden">
-            <div className="h-full overflow-auto p-4">
-              <ChatbotConsole />
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
     </div>
   );

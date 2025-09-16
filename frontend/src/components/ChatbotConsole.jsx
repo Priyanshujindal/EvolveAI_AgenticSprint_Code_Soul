@@ -40,6 +40,11 @@ export default function ChatbotConsole() {
   }, [messages]);
 
   const canSend = useMemo(() => input.trim().length > 0 && !loading, [input, loading]);
+  const keyMissing = useMemo(() => {
+    // Surface a clear UI notice if backend indicates missing key
+    const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant');
+    return !!(lastAssistant && typeof lastAssistant.content === 'string' && lastAssistant.content.toLowerCase().includes('gemini api key missing'));
+  }, [messages]);
 
   async function send() {
     if (!canSend) return;
@@ -85,6 +90,11 @@ export default function ChatbotConsole() {
 
   return (
     <div className="flex flex-col gap-3">
+      {keyMissing && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200 px-3 py-2 text-xs">
+          Gemini API key is not configured on the backend. Set <code>GEMINI_API_KEY</code> and restart the server.
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div className="text-sm text-slate-600 dark:text-slate-300">
           <span className="inline-flex items-center gap-2">

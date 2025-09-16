@@ -16,13 +16,20 @@ function trimHistory(messages, maxTurns = 12) {
 }
 
 function buildContents(messages, systemPrompt) {
-  const parts = [];
+  const contents = [];
+  // Gemini 1.5/2.0 text generateContent expects an array of contents, each with parts
+  // We will map conversation turns into sequential contents entries.
   if (systemPrompt) {
-    parts.push({ role: 'user', parts: [{ text: `System: ${systemPrompt}` }] });
+    contents.push({ role: 'user', parts: [{ text: `System: ${systemPrompt}` }] });
   }
-  const text = messages.map(m => `${m.role}: ${m.content}`).join('\n');
-  parts.push({ role: 'user', parts: [{ text }] });
-  return parts;
+
+  const safe = Array.isArray(messages) ? messages : [];
+  for (const msg of safe) {
+    const role = msg.role === 'assistant' ? 'model' : 'user';
+    const text = typeof msg.content === 'string' ? msg.content : String(msg.content || '');
+    contents.push({ role, parts: [{ text }] });
+  }
+  return contents;
 }
 
 async function chatWithGemini(messages, options = {}) {

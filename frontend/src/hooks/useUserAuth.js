@@ -19,23 +19,6 @@ export default function useUserAuth() {
   const [loading, setLoading] = useState(true);
   const [phoneConfirmation, setPhoneConfirmation] = useState(null);
 
-  useEffect(() => {
-    const unsub = observeAuthState(async (firebaseUser) => {
-      setUser(firebaseUser || null);
-      setLoading(false);
-    });
-    // Handle pending redirect result (Google sign-in fallback)
-    getRedirectResult(auth)
-      .then((res) => {
-        if (res && res.user) {
-          setUser(res.user);
-        }
-      })
-      .catch(() => {})
-      .finally(() => {});
-    return () => unsub && unsub();
-  }, []);
-
   const upsertUserProfile = useCallback(async (firebaseUser) => {
     try {
       if (!firebaseUser || !db) return;
@@ -57,6 +40,24 @@ export default function useUserAuth() {
       }
     } catch (_) {}
   }, []);
+
+  useEffect(() => {
+    const unsub = observeAuthState(async (firebaseUser) => {
+      setUser(firebaseUser || null);
+      setLoading(false);
+    });
+    // Handle pending redirect result (Google sign-in fallback)
+    getRedirectResult(auth)
+      .then(async (res) => {
+        if (res && res.user) {
+          await upsertUserProfile(res.user);
+          setUser(res.user);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {});
+    return () => unsub && unsub();
+  }, [upsertUserProfile]);
 
   const login = useCallback(async ({ email, password }) => {
     const cred = await signInWithEmailAndPassword(auth, email, password);
@@ -111,7 +112,6 @@ export default function useUserAuth() {
         await signInWithRedirect(auth, provider);
         return null; // flow will continue after redirect
       }
-      // Surface full error for UI
       console.error('[Auth] Google sign-in failed:', e);
       throw e;
     }

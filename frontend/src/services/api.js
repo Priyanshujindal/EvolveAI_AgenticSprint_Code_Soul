@@ -35,6 +35,11 @@ export async function analyzePython(body, url = 'http://localhost:8090') {
   return res.json();
 }
 
+export async function aiHealth() {
+  const res = await fetch(`${BASE}/api/ai/health`);
+  return res.json();
+}
+
 export async function processReport(file) {
   const form = new FormData();
   form.append('file', file);

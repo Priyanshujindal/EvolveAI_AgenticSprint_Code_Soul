@@ -24,12 +24,42 @@ export default function Dashboard() {
   const [nearby, setNearby] = useState(null);
   const [nearbyLoading, setNearbyLoading] = useState(false);
   const [nearbyError, setNearbyError] = useState(null);
+  // Analysis controls
+  const [topK, setTopK] = useState(3);
+  const [explainMethod, setExplainMethod] = useState('auto');
+  const [useScipyWinsorize, setUseScipyWinsorize] = useState(true);
+  const [forceLocal, setForceLocal] = useState(false);
+
+  // Persist/load preferences
+  React.useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('analysisPrefs') || '{}');
+      if (saved && typeof saved === 'object') {
+        if (saved.topK) setTopK(saved.topK);
+        if (saved.explainMethod) setExplainMethod(saved.explainMethod);
+        if (typeof saved.useScipyWinsorize === 'boolean') setUseScipyWinsorize(saved.useScipyWinsorize);
+        if (typeof saved.forceLocal === 'boolean') setForceLocal(saved.forceLocal);
+      }
+    } catch (_) {}
+  }, []);
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('analysisPrefs', JSON.stringify({ topK, explainMethod, useScipyWinsorize, forceLocal }));
+    } catch (_) {}
+  }, [topK, explainMethod, useScipyWinsorize, forceLocal]);
 
   async function analyzeMock() {
     try {
       setLoading(true);
       setError(null);
-      const data = await analyze({ notes: 'fever and headache', vitals: { temperature: 38.5 } });
+      const data = await analyze({
+        notes: 'fever and headache',
+        vitals: { temperature: 38.5 },
+        topK: Number(topK),
+        explainMethod,
+        useScipyWinsorize,
+        forceLocal
+      });
       setResult(data);
     } catch (e) {
       setError(String(e?.message || e));
@@ -87,6 +117,61 @@ export default function Dashboard() {
         subtitle="Run a quick analysis, review trends, and act on red flags."
         cta={<div className="flex gap-3 items-center"><Button onClick={analyzeMock}>Run Analysis</Button><Button variant="secondary" onClick={locateAmbulance}>Find Ambulance</Button></div>}
       />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Analysis Settings</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+              <div>
+                <label className="block text-sm text-slate-600 mb-1">Top K</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={3}
+                  value={topK}
+                  onChange={e => setTopK(e.target.value)}
+                  className="border rounded px-2 py-1 w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-slate-600 mb-1">Explainability</label>
+                <select
+                  value={explainMethod}
+                  onChange={e => setExplainMethod(e.target.value)}
+                  className="border rounded px-2 py-1 w-full"
+                >
+                  <option value="auto">Auto</option>
+                  <option value="captum">Captum</option>
+                  <option value="shap">SHAP</option>
+                  <option value="none">None</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2 mt-6 md:mt-0">
+                <input
+                  id="winsorize"
+                  type="checkbox"
+                  checked={useScipyWinsorize}
+                  onChange={e => setUseScipyWinsorize(e.target.checked)}
+                  className="h-4 w-4"
+                />
+                <label htmlFor="winsorize" className="text-sm text-slate-700">Use SciPy winsorization</label>
+              </div>
+              <div className="flex items-center gap-2 mt-6 md:mt-0">
+                <input
+                  id="forceLocal"
+                  type="checkbox"
+                  checked={forceLocal}
+                  onChange={e => setForceLocal(e.target.checked)}
+                  className="h-4 w-4"
+                />
+                <label htmlFor="forceLocal" className="text-sm text-slate-700">Force local analysis</label>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <StatCard label="Patients analyzed" value={result?.data ? (result.data.diagnoses?.length || 1) : 0} hint="From last session" accent="blue" />
         <StatCard label="Active alerts" value={result?.data?.redFlags?.length || 0} hint="Requires attention" accent="red" />
@@ -145,6 +230,47 @@ export default function Dashboard() {
               <RedFlagAlert alerts={result.data.redFlags} />
             </CardContent>
           </Card>
+          {result?.data?.explainability?.available && (
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle>Explainability</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-sm text-slate-600 mb-3">Method: {result.data.explainability.method}</div>
+                <div className="overflow-auto">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-slate-500">
+                        <th className="py-1 pr-4">Feature</th>
+                        <th className="py-1">Attribution</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(result.data.explainability.features || []).map((f, i) => {
+                        const val = Array.isArray(result.data.explainability.attributions) ? Number(result.data.explainability.attributions[i] || 0) : 0;
+                        const abs = Math.min(1, Math.abs(val));
+                        const width = `${Math.round(abs * 100)}%`;
+                        const color = val >= 0 ? 'bg-emerald-500' : 'bg-rose-500';
+                        return (
+                          <tr key={i} className="border-t">
+                            <td className="py-1 pr-4">{f}</td>
+                            <td className="py-1">
+                              <div className="flex items-center gap-3">
+                                <div className="w-40 h-2 bg-slate-200 rounded">
+                                  <div className={`${color} h-2 rounded`} style={{ width }} />
+                                </div>
+                                <span className="tabular-nums">{val.toFixed(4)}</span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
           <Card className="md:col-span-2">
             <CardHeader>
               <CardTitle>Clinician Feedback</CardTitle>
