@@ -87,6 +87,25 @@ async function saveRetrainingRecord(userId, feedback) {
   }
 }
 
-module.exports = { saveAnalysis, saveFeedback, saveRetrainingRecord, getRecentCheckins, getAllCheckins };
+async function getUserProfile(userId) {
+  if (!admin || !userId) return null;
+  try {
+    const db = admin.firestore();
+    const doc = await db.collection('users').doc(userId).get();
+    if (!doc.exists) return null;
+    const data = doc.data() || {};
+    // Avoid returning very large nested objects
+    const allowed = ['name', 'age', 'gender', 'dob', 'height', 'weight', 'conditions', 'allergies', 'medications', 'primaryDoctor', 'emergencyContact'];
+    const slim = {};
+    for (const key of allowed) {
+      if (data[key] !== undefined) slim[key] = data[key];
+    }
+    return slim;
+  } catch (_) {
+    return null;
+  }
+}
+
+module.exports = { saveAnalysis, saveFeedback, saveRetrainingRecord, getRecentCheckins, getAllCheckins, getUserProfile };
 
 

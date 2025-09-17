@@ -738,16 +738,27 @@ export default function UploadReport() {
                     creatinine: { min: 0.6, max: 1.3, unit: 'mg/dL' },
                   };
 
+                  function toNumber(val) {
+                    if (typeof val === 'number' && Number.isFinite(val)) return val;
+                    if (typeof val === 'string') {
+                      const m = val.match(/-?\d+(?:[\.,]\d+)?/);
+                      if (m) return Number(m[0].replace(',', '.'));
+                    }
+                    return null;
+                  }
+
                   function badge(value, { min, max }) {
-                    if (typeof value !== 'number') return { text: '—', cls: 'bg-slate-100 text-slate-700' };
-                    if (value < min) return { text: 'Low', cls: 'bg-amber-100 text-amber-800' };
-                    if (value > max) return { text: 'High', cls: 'bg-rose-100 text-rose-800' };
+                    const num = toNumber(value);
+                    if (!Number.isFinite(num)) return { text: '—', cls: 'bg-slate-100 text-slate-700' };
+                    if (num < min) return { text: 'Low', cls: 'bg-amber-100 text-amber-800' };
+                    if (num > max) return { text: 'High', cls: 'bg-rose-100 text-rose-800' };
                     return { text: 'Normal', cls: 'bg-emerald-100 text-emerald-800' };
                   }
 
                   function meter(value, { min, max }) {
-                    if (typeof value !== 'number') return 0.5;
-                    const clamped = Math.max(min, Math.min(max, value));
+                    const num = toNumber(value);
+                    if (!Number.isFinite(num)) return 0.5;
+                    const clamped = Math.max(min, Math.min(max, num));
                     return (clamped - min) / (max - min);
                   }
                   return (

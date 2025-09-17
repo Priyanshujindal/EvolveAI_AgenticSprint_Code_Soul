@@ -41,7 +41,7 @@ export default function ChatbotWidget() {
       {!open && (
         <Button
           onClick={toggle}
-          className={`h-14 w-14 rounded-full shadow-lg p-0 ring-2 ring-brand-600 bg-brand-600 text-white hover:bg-brand-700 focus:outline-none focus:ring-4 focus:ring-brand-300 transition ${hasHistory ? '' : 'animate-pulse'}`}
+          className={`h-14 w-14 rounded-full shadow-xl p-0 ring-2 ring-brand-500 bg-gradient-to-br from-brand-500 to-brand-700 text-white hover:from-brand-600 hover:to-brand-800 focus:outline-none focus:ring-4 focus:ring-brand-300 transition-transform duration-200 hover:scale-105 ${hasHistory ? '' : 'animate-pulse'}`}
           aria-label="Open chat"
           title="Open chat (Alt+/)"
         >
@@ -52,23 +52,33 @@ export default function ChatbotWidget() {
         </Button>
       )}
       {open && (
-        <div className="relative w-[500px] max-w-[96vw] h-[60vh] sm:h-[65vh] md:h-[72vh] lg:h-[75vh] rounded-xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur">
+        <div className="relative w-[500px] max-w-[96vw] h-[60vh] sm:h-[65vh] md:h-[72vh] lg:h-[75vh] rounded-2xl shadow-2xl overflow-hidden border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200/80 dark:border-slate-800/80 bg-gradient-to-r from-white to-slate-50 dark:from-slate-900 dark:to-slate-950/60 backdrop-blur">
             <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
               <span className="font-medium">Assistive Chat</span>
             </div>
-            <button
-              onClick={close}
-              aria-label="Close chat"
-              className="h-7 w-7 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-900 dark:text-slate-100 flex items-center justify-center text-xs"
-              title="Close"
-            >
-              ✕
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => window.dispatchEvent(new Event('chat:clear'))}
+                aria-label="Clear conversation"
+                className="h-7 px-2 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-100 text-xs border border-slate-200 dark:border-slate-700"
+                title="Clear conversation"
+              >
+                Clear
+              </button>
+              <button
+                onClick={close}
+                aria-label="Close chat"
+                className="h-7 w-7 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-900 dark:text-slate-100 flex items-center justify-center text-xs shadow-subtle"
+                title="Close"
+              >
+                ✕
+              </button>
+            </div>
           </div>
           <div className="h-full flex flex-col">
-            <div className="flex-1 p-4 overflow-auto">
+            <div className="flex-1 p-4 overflow-auto bg-[radial-gradient(ellipse_at_top_left,rgba(14,165,233,0.06),transparent_50%),radial-gradient(ellipse_at_bottom_right,rgba(99,102,241,0.06),transparent_50%)]">
               <ChatbotConsole compact />
             </div>
           </div>

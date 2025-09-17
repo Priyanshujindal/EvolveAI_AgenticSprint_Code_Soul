@@ -6,6 +6,8 @@ import Spinner from './ui/Spinner';
 import { formatDate } from '../utils/formatDate';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from './ui/ToastProvider';
+import { db } from '../firebase';
+import { collection, getDocs, orderBy, limit, query } from 'firebase/firestore';
 
 export default function ChatbotConsole({ compact = false }) {
   const { user } = useAuth();
@@ -13,12 +15,14 @@ export default function ChatbotConsole({ compact = false }) {
   const storageKey = useMemo(() => `chat:${user?.uid || 'anon'}:messages`, [user?.uid]);
   const prefKey = useMemo(() => `chat:${user?.uid || 'anon'}:useCheckins`, [user?.uid]);
   const prefAllKey = useMemo(() => `chat:${user?.uid || 'anon'}:useAllCheckins`, [user?.uid]);
+  const prefProfileKey = useMemo(() => `chat:${user?.uid || 'anon'}:useProfile`, [user?.uid]);
 
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [controller, setController] = useState(null);
   const [expandedIds, setExpandedIds] = useState({});
+  const [atBottom, setAtBottom] = useState(true);
   const listRef = useRef(null);
   const textareaRef = useRef(null);
   const presets = useMemo(() => ([
@@ -29,6 +33,7 @@ export default function ChatbotConsole({ compact = false }) {
   ]), []);
   const [useCheckins, setUseCheckins] = useState(true);
   const [useAllCheckins, setUseAllCheckins] = useState(false);
+  const [useProfile, setUseProfile] = useState(false);
 
   useEffect(() => {
     // load from localStorage on mount and when user changes
@@ -47,6 +52,9 @@ export default function ChatbotConsole({ compact = false }) {
       const rawAll = localStorage.getItem(prefAllKey);
       if (rawAll === 'true' || rawAll === 'false') setUseAllCheckins(rawAll === 'true');
       else setUseAllCheckins(false);
+      const rawProfile = localStorage.getItem(prefProfileKey);
+      if (rawProfile === 'true' || rawProfile === 'false') setUseProfile(rawProfile === 'true');
+      else setUseProfile(true);
     } catch (_) {
       setMessages([]);
     }
@@ -63,11 +71,27 @@ export default function ChatbotConsole({ compact = false }) {
   }, [messages, storageKey]);
 
   useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const threshold = 16;
+      const isBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - threshold;
+      setAtBottom(isBottom);
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
+
+  useEffect(() => {
     try { localStorage.setItem(prefKey, String(useCheckins)); } catch (_) {}
   }, [useCheckins, prefKey]);
   useEffect(() => {
     try { localStorage.setItem(prefAllKey, String(useAllCheckins)); } catch (_) {}
   }, [useAllCheckins, prefAllKey]);
+  useEffect(() => {
+    try { localStorage.setItem(prefProfileKey, String(useProfile)); } catch (_) {}
+  }, [useProfile, prefProfileKey]);
 
   const canSend = useMemo(() => input.trim().length > 0 && !loading, [input, loading]);
   const keyMissing = useMemo(() => {
@@ -77,6 +101,10 @@ export default function ChatbotConsole({ compact = false }) {
 
   async function send() {
     if (!canSend) return;
+    if (!user && (useCheckins || useAllCheckins || useProfile)) {
+      notify('Please sign in to use your profile or check-ins in chat.', 'info');
+      return;
+    }
     const nextMessages = [
       ...messages,
       { role: 'user', content: input, createdAt: Date.now() }
@@ -85,13 +113,36 @@ export default function ChatbotConsole({ compact = false }) {
     setInput('');
     setLoading(true);
     try {
-      const payload = { messages: nextMessages, options: { maxOutputTokens: 512, useCheckins, checkinLimit: 7, useAllCheckins, checkinMax: 365, userId: user?.uid || undefined } };
+      // Optional client-side fallback: include compact recent check-ins if available
+      let clientCheckins = [];
+      if (db && user && useCheckins) {
+        try {
+          const ref = collection(db, 'users', user.uid, 'dailyCheckins');
+          const qy = query(ref, orderBy('date', 'desc'), limit(useAllCheckins ? 365 : 7));
+          const snap = await getDocs(qy);
+          clientCheckins = snap.docs.map(d => {
+            const data = d.data() || {};
+            let iso = '';
+            try { iso = data?.date?.toDate ? data.date.toDate().toISOString().slice(0,10) : (data?.date?._seconds ? new Date(data.date._seconds * 1000).toISOString().slice(0,10) : ''); } catch (_) { iso = ''; }
+            return {
+              id: d.id,
+              date: iso,
+              answers: data.answers,
+              notes: data.notes || null
+            };
+          });
+        } catch (_) {
+          clientCheckins = [];
+        }
+      }
+      const payload = { messages: nextMessages, options: { maxOutputTokens: 512, useCheckins, checkinLimit: 7, useAllCheckins, checkinMax: 365, useProfile, userId: user?.uid || undefined, clientCheckins } };
       const abort = new AbortController();
       setController(abort);
       const data = await chatWithGeminiApi(payload, { signal: abort.signal });
       const reply = data?.data?.error || data?.data?.reply || '...';
       setMessages(m => m.concat({ role: 'assistant', content: reply, createdAt: Date.now() }));
     } catch (e) {
+      console.error('chat error:', e);
       const message = e?.message || 'Network error';
       notify(message, 'error');
     } finally {
@@ -100,9 +151,29 @@ export default function ChatbotConsole({ compact = false }) {
     }
   }
 
+  function regenerateLast() {
+    if (loading) return;
+    let lastUserIndex = -1;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'user') { lastUserIndex = i; break; }
+    }
+    if (lastUserIndex === -1) return;
+    const base = messages.slice(0, lastUserIndex + 1);
+    setMessages(base);
+    const last = base[base.length - 1];
+    setInput(last?.content || '');
+    setTimeout(() => send(), 0);
+  }
+
   function clearConversation() {
     setMessages([]);
   }
+
+  useEffect(() => {
+    const onClear = () => clearConversation();
+    window.addEventListener('chat:clear', onClear);
+    return () => window.removeEventListener('chat:clear', onClear);
+  }, []);
 
   function copyMessage(content) {
     try {
@@ -222,14 +293,18 @@ export default function ChatbotConsole({ compact = false }) {
       )}
       <div
         ref={listRef}
-        className={`${compact ? 'flex-1 min-h-0 overflow-auto p-3' : 'max-h-[70vh] min-h-[55vh] overflow-auto p-4'} rounded-lg border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-950/70 backdrop-blur`}
+        className={`${compact ? 'flex-1 min-h-0 overflow-auto p-3' : 'max-h-[70vh] min-h-[55vh] overflow-auto p-4'} rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-950/70 backdrop-blur shadow-inner`}
       >
         {messages.length === 0 && (
-          <div>
-            <div className="text-sm text-slate-500 mb-3">Start the conversation by asking a question, or try one of these:</div>
-            <div className="flex flex-wrap gap-2 mb-2">
+          <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-4 bg-slate-50/60 dark:bg-slate-900/40">
+            <div className="text-sm text-slate-600 dark:text-slate-300 mb-3">Start the conversation by asking a question, or try one of these:</div>
+            <div className="flex flex-wrap gap-2">
               {presets.map((p, i) => (
-                <button key={i} onClick={() => setInput(p)} className="px-3 py-1.5 rounded-full text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-100 border border-slate-200 dark:border-slate-700">
+                <button
+                  key={i}
+                  onClick={() => { setInput(p); setTimeout(() => send(), 0); }}
+                  className="px-3 py-1.5 rounded-full text-xs bg-white hover:bg-slate-100 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-100 border border-slate-200 dark:border-slate-700 shadow-subtle"
+                >
                   {p}
                 </button>
               ))}
@@ -239,34 +314,50 @@ export default function ChatbotConsole({ compact = false }) {
         {messages.map((m, i) => (
           <div key={i} className={`mb-3 flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`flex items-end gap-2 ${m.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-              <div className={`hidden lg:flex h-8 w-8 shrink-0 rounded-full items-center justify-center text-xs font-semibold ${m.role === 'user' ? 'bg-brand-600 text-white' : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-100'}`}>{m.role === 'user' ? 'You' : 'AI'}</div>
+              <div className={`flex h-8 w-8 shrink-0 rounded-full items-center justify-center text-xs font-semibold ${m.role === 'user' ? 'bg-brand-600 text-white' : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-100'}`}>{m.role === 'user' ? 'You' : 'AI'}</div>
               <div>
                 { (() => {
                   const id = `${m.createdAt || i}-${i}`;
-                  const isLong = m.role === 'assistant' && typeof m.content === 'string' && m.content.length > 500;
+                  const contentString = typeof m.content === 'string' ? m.content : '';
+                  const lineCount = contentString ? contentString.split(/\r?\n/).length : 0;
+                  const isLong = m.role === 'assistant' && (contentString.length > 300 || lineCount > 8);
                   const isExpanded = !!expandedIds[id];
                   return (
-                    <div className={`group relative max-w-[95%] sm:max-w-[92%] md:max-w-[90%] lg:max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-subtle break-words whitespace-pre-wrap leading-normal ${
+                    <div className={`group relative max-w-[95%] sm:max-w-[92%] md:max-w-[90%] lg:max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-subtle break-words whitespace-pre-wrap leading-relaxed ${
                   m.role === 'user'
-                    ? 'bg-brand-600 text-white rounded-br-md'
-                    : 'bg-slate-100/90 dark:bg-slate-900/80 text-slate-900 dark:text-slate-100 rounded-bl-md'
+                    ? 'bg-gradient-to-br from-brand-600 to-brand-700 text-white rounded-br-md'
+                    : 'bg-slate-100/90 dark:bg-slate-900/80 text-slate-900 dark:text-slate-100 rounded-bl-md border border-slate-200/60 dark:border-slate-800/60'
                 }`}>
-                      <div className="max-h-60 overflow-y-auto pr-1">
+                      <div className={`${isLong && !isExpanded ? 'max-h-60 overflow-y-auto' : ''} pr-1 custom-scrollbar relative`}>
                         {m.role === 'assistant' ? (
-                          <div className={`chat-content select-text ${isExpanded ? '' : 'line-clamp-10'}`}>
+                          <div className={`chat-content select-text ${isLong && !isExpanded ? 'line-clamp-10' : ''}`}>
                             {renderMarkdownLite(m.content)}
                           </div>
                         ) : (
                           <div className="break-words whitespace-pre-wrap">{m.content}</div>
                         )}
+                        {isLong && !isExpanded ? (
+                          <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-slate-100/90 dark:from-slate-900/80 to-transparent rounded-b-2xl" />
+                        ) : null}
                       </div>
-                      <button
-                        onClick={() => copyMessage(m.content)}
-                        title="Copy"
-                        className={`absolute -top-2 ${m.role === 'user' ? '-left-2' : '-right-2'} hidden group-hover:inline-flex items-center justify-center h-6 w-6 rounded-full bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600`}
-                      >
-                        ⧉
-                      </button>
+                      <div className={`absolute -top-3 ${m.role === 'user' ? '-left-3' : '-right-3'} hidden group-hover:flex items-center gap-1`}>
+                        <button
+                          onClick={() => copyMessage(m.content)}
+                          title="Copy"
+                          className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-white text-slate-700 hover:bg-slate-100 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 shadow"
+                        >
+                          ⧉
+                        </button>
+                        {i === messages.length - 1 && m.role === 'assistant' ? (
+                          <button
+                            onClick={regenerateLast}
+                            title="Regenerate"
+                            className="inline-flex items-center justify-center h-6 px-2 rounded-full bg-white text-slate-700 hover:bg-slate-100 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 shadow text-[10px]"
+                          >
+                            Regenerate
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
                   );
                 })()}
@@ -274,20 +365,23 @@ export default function ChatbotConsole({ compact = false }) {
                   <div className={`text-[10px] ${m.role === 'user' ? 'text-slate-300' : 'text-slate-500 dark:text-slate-400'}`}>
                     {m.createdAt ? formatDate(m.createdAt) : ''}
                   </div>
-                  {m.role === 'assistant' && typeof m.content === 'string' && m.content.length > 500 && (
-                    (() => {
-                      const id = `${m.createdAt || i}-${i}`;
-                      const isExpanded = !!expandedIds[id];
-                      return (
-                        <button
-                          className="text-[10px] px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-                          onClick={() => setExpandedIds(s => ({ ...s, [id]: !s[id] }))}
-                        >
-                          {isExpanded ? 'Collapse' : 'Expand'}
-                        </button>
-                      );
-                    })()
-                  )}
+                  {(() => {
+                    if (m.role !== 'assistant') return null;
+                    const contentString = typeof m.content === 'string' ? m.content : '';
+                    const lineCount = contentString ? contentString.split(/\r?\n/).length : 0;
+                    const needsToggle = contentString.length > 300 || lineCount > 8;
+                    if (!needsToggle) return null;
+                    const id = `${m.createdAt || i}-${i}`;
+                    const isExpanded = !!expandedIds[id];
+                    return (
+                      <button
+                        className="text-[10px] px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 shadow-subtle"
+                        onClick={() => setExpandedIds(s => ({ ...s, [id]: !s[id] }))}
+                      >
+                        {isExpanded ? 'Collapse' : 'Expand'}
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
@@ -299,10 +393,25 @@ export default function ChatbotConsole({ compact = false }) {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-600"></span>
             </span>
-            Thinking…
+            <span className="inline-flex items-center gap-1">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:-0.2s]"></span>
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-slate-400 animate-bounce"></span>
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:0.2s]"></span>
+            </span>
           </div>
         )}
       </div>
+      {!atBottom && (
+        <div className="flex justify-end -mt-2">
+          <button
+            onClick={() => listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' })}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-200 shadow-subtle"
+            title="Scroll to latest"
+          >
+            ↓ New
+          </button>
+        </div>
+      )}
       <div className={`${compact ? 'sticky bottom-0 z-10 border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur pt-3' : ''}`}>
         <div className="flex gap-2 items-end">
           <Textarea
@@ -319,7 +428,7 @@ export default function ChatbotConsole({ compact = false }) {
             rows={compact ? 2 : 3}
           />
           <div className="flex flex-col items-end gap-1">
-            <Button onClick={send} disabled={!canSend}>
+            <Button onClick={send} disabled={!canSend} className="shadow-subtle">
               Send
             </Button>
             <div className="text-[10px] text-slate-500">{input.length}/1000</div>
@@ -335,6 +444,15 @@ export default function ChatbotConsole({ compact = false }) {
                 onChange={e => setUseCheckins(e.target.checked)}
               />
               Use my daily check-ins for answers
+            </label>
+            <label className="inline-flex items-center gap-2 text-[12px] text-slate-600 dark:text-slate-300">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-slate-300 dark:border-slate-700"
+                checked={useProfile}
+                onChange={e => setUseProfile(e.target.checked)}
+              />
+              Use my profile data
             </label>
             <label className="inline-flex items-center gap-2 text-[12px] text-slate-600 dark:text-slate-300">
               <input
