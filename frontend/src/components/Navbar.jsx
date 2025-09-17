@@ -25,7 +25,6 @@ export default function Navbar() {
             <NavLink className={linkCls} to="/dashboard">Dashboard</NavLink>
             <NavLink className={linkCls} to="/daily-checkin">Daily Check-in</NavLink>
             <NavLink className={linkCls} to="/upload-report">Upload Report</NavLink>
-            <NavLink className={linkCls} to="/chatbot">AI Assistant</NavLink>
           </div>
           <div className="flex items-center gap-2 relative">
             <button
@@ -120,7 +119,6 @@ export default function Navbar() {
             <NavLink onClick={() => setOpen(false)} className={linkCls} to="/dashboard">Dashboard</NavLink>
             <NavLink onClick={() => setOpen(false)} className={linkCls} to="/daily-checkin">Daily Check-in</NavLink>
             <NavLink onClick={() => setOpen(false)} className={linkCls} to="/upload-report">Upload Report</NavLink>
-            <NavLink onClick={() => setOpen(false)} className={linkCls} to="/chatbot">AI Assistant</NavLink>
             {!loading && (
               user ? (
                 <button

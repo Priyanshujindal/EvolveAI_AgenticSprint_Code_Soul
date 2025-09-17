@@ -19,7 +19,6 @@ export default function Footer() {
             <a href="/dashboard" className="hover:text-slate-700 dark:hover:text-slate-200">Dashboard</a>
             <a href="/daily-checkin" className="hover:text-slate-700 dark:hover:text-slate-200">Daily Check‑In</a>
             <a href="/upload-report" className="hover:text-slate-700 dark:hover:text-slate-200">Upload Report</a>
-            <a href="/chatbot" className="hover:text-slate-700 dark:hover:text-slate-200">AI Assistant</a>
             <a href="mailto:contact@example.com" className="hover:text-slate-700 dark:hover:text-slate-200">Contact</a>
           </div>
         </div>
