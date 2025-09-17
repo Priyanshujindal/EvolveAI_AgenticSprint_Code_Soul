@@ -8,8 +8,6 @@ import Spinner from '../components/ui/Spinner';
 import { useToast } from '../components/ui/ToastProvider';
 import Hero from '../components/Hero';
 import StatCard from '../components/StatCard';
-import QuickActions from '../components/QuickActions';
-import ActivityFeed from '../components/ActivityFeed';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { collection, getDocs, orderBy, limit, query } from 'firebase/firestore';
@@ -366,11 +364,82 @@ export default function Dashboard() {
         />
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <QuickActions onLocate={locateAmbulance} />
-        </div>
-        <ActivityFeed />
+      <div className="grid grid-cols-1 gap-6">
+        <Card className="relative overflow-hidden border-0 shadow-xl bg-white/80 dark:bg-slate-900/80 ring-1 ring-slate-900/5">
+          <CardHeader>
+            <CardTitle className="flex items-center text-xl md:text-2xl">
+              <svg className="w-6 h-6 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z" />
+              </svg>
+              About Us
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="relative">
+              <div className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-blue-500/10 blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-20 -left-20 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl" />
+              <div className="relative rounded-2xl p-6 md:p-8 bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 border border-slate-200/70 dark:border-slate-800/70 shadow-xl">
+                <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-blue-200/60 dark:border-blue-900/50 bg-blue-50/60 dark:bg-blue-900/20 px-3 py-1 text-xs font-medium text-blue-700 dark:text-blue-300">
+                  <span className="inline-block h-2 w-2 rounded-full bg-blue-500" />
+                  Health Sphere
+                </div>
+                <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Your Partner in Proactive Health</h2>
+                <p className="mt-3 text-slate-600 dark:text-slate-300 leading-relaxed">
+                  Health Sphere is an AI-powered health monitoring and triage platform that helps you track symptoms,
+                  understand risk trends, and take timely action. We’re building a privacy-first, reliable, and
+                  clinician-informed experience to support everyday well-being.
+                </p>
+
+                <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/60 p-4 hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-medium">
+                      <svg className="w-5 h-5 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20 6L9 17l-5-5" />
+                      </svg>
+                      Daily check-ins
+                    </div>
+                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">Monitor well-being and symptoms over time.</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/60 p-4 hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-medium">
+                      <svg className="w-5 h-5 text-indigo-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 3v18h18" />
+                      </svg>
+                      AI risk insights
+                    </div>
+                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">Clear summaries and trend visualizations.</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/60 p-4 hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-medium">
+                      <svg className="w-5 h-5 text-rose-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 8v4l3 3" />
+                      </svg>
+                      Rapid actions
+                    </div>
+                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">Find emergency services when you need them.</p>
+                  </div>
+                </div>
+
+                <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/50 p-4 text-center">
+                    <div className="text-2xl font-bold">Privacy-first</div>
+                    <div className="text-xs opacity-80 mt-1">Your data, your control</div>
+                  </div>
+                  <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/50 p-4 text-center">
+                    <div className="text-2xl font-bold">AI + Clinicians</div>
+                    <div className="text-xs opacity-80 mt-1">Human-centered insights</div>
+                  </div>
+                  <div className="rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/50 p-4 text-center">
+                    <div className="text-2xl font-bold">Actionable</div>
+                    <div className="text-xs opacity-80 mt-1">Guidance you can use</div>
+                  </div>
+                </div>
+
+                
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
       
       {(nearbyLoading || nearbyError || (nearby && Array.isArray(nearby.data))) && (

@@ -18,7 +18,7 @@ export default function Navbar() {
         <div className="flex items-center gap-4">
           <div className="mr-auto flex items-center gap-3">
             <div className="w-7 h-7 rounded-md bg-gradient-to-tr from-brand-600 to-blue-500 shadow ring-1 ring-brand-500/30" />
-            <span className="font-semibold tracking-wide text-slate-900 dark:text-slate-100">AgenticSprit</span>
+            <span className="font-semibold tracking-wide text-slate-900 dark:text-slate-100">Health Sphere</span>
           </div>
           <div className="hidden md:flex items-center gap-1">
             <NavLink className={linkCls} to="/">Dashboard</NavLink>
