@@ -1,0 +1,34 @@
+services:
+  - type: web
+    name: evolveai-backend
+    env: node
+    plan: free
+    region: oregon
+    buildCommand: |
+      npm ci --prefix frontend
+      npm run build --prefix frontend
+      npm ci --prefix backend
+    startCommand: npm start --prefix backend
+    autoDeploy: true
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 18
+      - key: PORT
+        value: 8080
+      # Add your secrets in Render Dashboard or here if non-secret defaults are fine
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.0-flash
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: AI_SERVICE_URL
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: https://evolveai.onrender.com
+      - key: DEV_ALLOW_ALL_CORS
+        value: "false"
+

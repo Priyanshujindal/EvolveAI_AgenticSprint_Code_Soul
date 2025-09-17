@@ -284,6 +284,38 @@ The application is designed for cloud deployment with:
 - Docker containerization support
 - CI/CD pipeline integration
 
+### Deploy to Render
+
+This repo includes `render.yaml` to deploy a single Web Service that builds the frontend and serves it from the backend.
+
+1. Push your repo to GitHub/GitLab.
+2. In Render, click New → Blueprint and select your repo.
+3. Review the plan and service named `evolveai-backend` and create resources.
+4. Set environment variables (in Render dashboard → Service → Environment):
+   - `GOOGLE_API_KEY` (secret)
+   - `GEMINI_API_KEY` (secret)
+   - `GEMINI_MODEL` (optional, default `gemini-2.0-flash`)
+   - `FIREBASE_PROJECT_ID`
+   - `AI_SERVICE_URL` (optional; URL of Python AI service if used)
+   - `ALLOWED_ORIGINS` (set to your Render app URL, e.g., `https://<your-service>.onrender.com`)
+   - `DEV_ALLOW_ALL_CORS` = `false`
+
+Build and start are handled automatically by Render using `render.yaml`:
+
+```yaml
+buildCommand: |
+  npm ci --prefix frontend
+  npm run build --prefix frontend
+  npm ci --prefix backend
+startCommand: npm start --prefix backend
+healthCheckPath: /health
+```
+
+Notes:
+- The backend serves the built frontend from `frontend/dist` in production.
+- API base on the frontend is relative in production, so no extra config is needed.
+- Ensure the Python AI service is reachable from Render if `AI_SERVICE_URL` is set.
+
 ## 🔒 Security & Compliance
 
 - **HIPAA-aligned** architecture with proper data handling
