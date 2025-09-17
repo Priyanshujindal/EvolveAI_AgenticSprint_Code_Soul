@@ -1,5 +1,5 @@
 const { chatbotAgent } = require('../agents/chatbotAgent');
-const { getRecentCheckins, getAllCheckins } = require('../services/firebaseService');
+const { getRecentCheckins, getAllCheckins, getUserProfile } = require('../services/firebaseService');
 
 module.exports = async function chatWithGemini(req, res) {
   try {
@@ -16,6 +16,7 @@ module.exports = async function chatWithGemini(req, res) {
         const checkins = options.useAllCheckins
           ? await getAllCheckins(userId, options.checkinMax || 365)
           : await getRecentCheckins(userId, options.checkinLimit || 7);
+        try { console.log('[chat] fetched checkins:', Array.isArray(checkins) ? checkins.length : 0); } catch (_) {}
         if (Array.isArray(checkins) && checkins.length > 0) {
           const latest = checkins[0];
           const formatDate = (d) => {
@@ -69,6 +70,31 @@ module.exports = async function chatWithGemini(req, res) {
       }
     }
 
+    // If requested, fetch user profile and inject context
+    if (options.useProfile && userId) {
+      try {
+        const profile = await getUserProfile(userId);
+        try { console.log('[chat] has profile:', !!profile); } catch (_) {}
+        if (profile) {
+          const profileJson = JSON.stringify(profile, null, 2);
+          const profileLine = `User profile (JSON):\n${profileJson}`;
+          systemPrompt = systemPrompt ? `${systemPrompt}\n\n${profileLine}` : profileLine;
+        }
+      } catch (_) {
+        // ignore
+      }
+    }
+
+    // Debug logs (safe)
+    try {
+      console.log('[chat] userId:', userId, 'useCheckins:', !!options.useCheckins, 'useAllCheckins:', !!options.useAllCheckins, 'useProfile:', !!options.useProfile);
+    } catch (_) {}
+
+    // Fallback system prompt to avoid privacy disclaimers when no data exists
+    if (!systemPrompt) {
+      systemPrompt = "You are a health assistant. The user has not logged any check-ins yet. Answer generally, be helpful and safe, and encourage them to record daily symptoms to personalize guidance.";
+    }
+    try { console.log('[chat] systemPrompt preview =>', (systemPrompt || '').slice(0, 500)); } catch (_) {}
     const mergedOptions = { ...options, systemPrompt };
     const result = await chatbotAgent(messages, mergedOptions);
     res.json({ ok: true, data: result });

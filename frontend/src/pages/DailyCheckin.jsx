@@ -274,22 +274,73 @@ export default function DailyCheckin() {
   }
 
   return (
-    <div className="relative">
+    <div className="relative bg-[radial-gradient(ellipse_at_top_left,rgba(125,211,252,0.22),transparent_60%),radial-gradient(ellipse_at_bottom_right,rgba(167,139,250,0.18),transparent_60%)]">
       <div className="pointer-events-none absolute -top-20 -right-10 h-56 w-56 rounded-full bg-blue-500/10 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-10 -left-10 h-56 w-56 rounded-full bg-emerald-500/10 blur-3xl" />
       <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-6 text-slate-900 dark:text-slate-100 flex items-center gap-2">
         <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-tr from-brand-600 to-blue-500 text-white text-sm shadow ring-1 ring-brand-500/30">✓</span>
         Daily Check-in
       </h1>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="lg:col-span-2 border-0 ring-1 ring-slate-900/5 shadow-xl bg-white/80 dark:bg-slate-900/80">
+      {/* Top: Why this matters */}
+      <div className="grid grid-cols-1 gap-6">
+        <Card className="border-0 ring-1 ring-slate-900/5 shadow-md bg-white/85 dark:bg-slate-900/85 rounded-2xl">
           <CardHeader>
-            <CardTitle className="text-lg md:text-xl flex items-center gap-2">
-              <svg className="w-5 h-5 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v4M16 2v4M3 10h18M5 22h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z"/></svg>
-              Today's Check-in
+            <CardTitle className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-purple-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20l9-5-9-5-9 5 9 5z"/><path d="M12 12l9-5-9-5-9 5 9 5z"/></svg>
+              Why this matters
             </CardTitle>
           </CardHeader>
           <CardContent>
+            <div className="text-sm text-slate-600 dark:text-slate-300 space-y-2 leading-relaxed">
+              <p>Your daily responses help track trends in sleep, mood, pain, and lifestyle. If you report concerning symptoms, your clinician or AI assistant can prioritize guidance.</p>
+              <p>We limit to one check-in per day to keep insights consistent. You can update tomorrow if anything changes.</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Two-column area */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Left column on desktop: Recent check-ins */}
+          <Card className="border-0 ring-1 ring-slate-900/5 shadow-md bg-white/85 dark:bg-slate-900/85 rounded-2xl md:order-1">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/></svg>
+                Your recent check-ins
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {points.length > 0 ? (
+                <div className="space-y-4">
+                  <div className="text-sm text-slate-600 dark:text-slate-300">
+                    Overall trend: <span className={`font-medium ${trendLabel === 'Worsening' ? 'text-red-600' : trendLabel === 'Improving' ? 'text-emerald-600' : 'text-slate-700 dark:text-slate-200'}`}>{trendLabel || 'Not enough data'}</span>
+                  </div>
+                  <div className="bg-white dark:bg-slate-950 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm">
+                    <RiskChart points={points} labels={labels} title={aiStatus?.python?.available ? 'AI risk' : 'Risk'} yRange={{ min: 0, max: 1 }} />
+                  </div>
+                  <ul className="divide-y divide-slate-200 dark:divide-slate-800 text-sm rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800">
+                    {history.slice(0, 10).map((h, i) => (
+                      <li key={h.id || i} className="py-2 px-3 flex items-center justify-between hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
+                        <span className="text-slate-600 dark:text-slate-300">{h?.date?.toDate ? h.date.toDate().toLocaleDateString() : ''}</span>
+                        <span className="font-medium tabular-nums">{scoreFromAnswers(h.answers)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <div className="text-sm text-slate-600 dark:text-slate-300">No history yet. Your check-ins will appear here.</div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Right column on desktop: Today's Check-in */}
+          <Card className="border-0 ring-1 ring-slate-900/5 shadow-md bg-white/85 dark:bg-slate-900/85 rounded-2xl md:order-2">
+            <CardHeader>
+              <CardTitle className="text-lg md:text-xl flex items-center gap-2">
+                <svg className="w-5 h-5 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v4M16 2v4M3 10h18M5 22h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z"/></svg>
+                Today's Check-in
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
             {submittedToday ? (
               <div className="space-y-3 text-sm text-slate-700 dark:text-slate-300">
                 <p className="font-medium">You've already submitted today's check-in. Come back tomorrow.</p>
@@ -374,7 +425,7 @@ export default function DailyCheckin() {
                   { key: 'ns_q11', title: 'Sleep / Insomnia Today', opts: ['Slept well – no trouble falling or staying asleep','Mild difficulty – took longer than usual to fall asleep','Moderate difficulty – frequent waking or poor sleep quality','Severe – hardly slept or very restless night'] },
                   { key: 'ns_q12', title: 'Hot Flashes / Sudden Warmth Today', opts: ['None – no unusual warmth','Mild – occasional warmth or flushing','Moderate – noticeable episodes affecting comfort','Severe – frequent or intense hot flashes'] },
                 ].map((q, idx) => (
-                  <div key={q.key} className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/60 p-5 md:p-6">
+                  <div key={q.key} className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/75 dark:bg-slate-900/60 p-5 md:p-6 transition hover:shadow-md hover:scale-[1.01]">
                     <div className="flex items-center gap-3 mb-3">
                       <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-tr from-brand-600 to-blue-500 text-white text-[11px] shadow ring-1 ring-brand-500/30">{idx + 1}</span>
                       <label className="block text-sm md:text-base font-medium text-slate-800 dark:text-slate-100 leading-snug">{q.title}</label>
@@ -385,7 +436,7 @@ export default function DailyCheckin() {
                           type="button"
                           key={opt}
                           onClick={() => setField(q.key, opt)}
-                          className={`px-3 py-2.5 rounded-lg border text-sm text-left transition focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-900 ${answers[q.key] === opt ? 'bg-gradient-to-tr from-brand-600 to-blue-500 text-white border-transparent shadow-md ring-brand-500/40' : 'border-slate-300 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800'}`}
+                          className={`px-4 py-3 rounded-xl border text-sm text-left transition transform focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-900 ${answers[q.key] === opt ? 'bg-gradient-to-tr from-brand-600 to-blue-500 text-white border-transparent shadow-md ring-brand-500/40' : 'bg-white/80 dark:bg-slate-900/60 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 hover:shadow-md hover:-translate-y-[1px]'}`}
                         >
                           {opt}
                         </button>
@@ -397,7 +448,7 @@ export default function DailyCheckin() {
                 {/* Daily health notes */}
                 <div className="pt-2">
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Add notes for today (optional)</label>
-                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/60 p-3">
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white/75 dark:bg-slate-900/60 p-3">
                     <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Type anything noteworthy about your health today..." />
                   </div>
                 </div>
@@ -543,53 +594,9 @@ export default function DailyCheckin() {
                 </div>
               </form>
             )}
-          </CardContent>
-        </Card>
-        <Card className="lg:col-span-2 border-0 ring-1 ring-slate-900/5 shadow-xl bg-white/80 dark:bg-slate-900/80">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/></svg>
-              Your recent check-ins
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {points.length > 0 ? (
-              <div className="space-y-4">
-                <div className="text-sm text-slate-600 dark:text-slate-300">
-                  Overall trend: <span className={`font-medium ${trendLabel === 'Worsening' ? 'text-red-600' : trendLabel === 'Improving' ? 'text-emerald-600' : 'text-slate-700 dark:text-slate-200'}`}>{trendLabel || 'Not enough data'}</span>
-                </div>
-                <div className="bg-white dark:bg-slate-950 rounded-lg p-4 border border-slate-200 dark:border-slate-800 shadow-sm">
-                  <RiskChart points={points} labels={labels} title={aiStatus?.python?.available ? 'AI risk' : 'Risk'} yRange={{ min: 0, max: 1 }} />
-                </div>
-                <ul className="divide-y divide-slate-200 dark:divide-slate-800 text-sm rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800">
-                  {history.slice(0, 10).map((h, i) => (
-                    <li key={h.id || i} className="py-2 px-3 flex items-center justify-between hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
-                      <span className="text-slate-600 dark:text-slate-300">{h?.date?.toDate ? h.date.toDate().toLocaleDateString() : ''}</span>
-                      <span className="font-medium tabular-nums">{scoreFromAnswers(h.answers)}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : (
-              <div className="text-sm text-slate-600 dark:text-slate-300">No history yet. Your check-ins will appear here.</div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-2 border-0 ring-1 ring-slate-900/5 shadow-xl bg-white/80 dark:bg-slate-900/80">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-purple-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20l9-5-9-5-9 5 9 5z"/><path d="M12 12l9-5-9-5-9 5 9 5z"/></svg>
-              Why this matters
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-sm text-slate-600 dark:text-slate-300 space-y-2 leading-relaxed">
-              <p>Your daily responses help track trends in sleep, mood, pain, and lifestyle. If you report concerning symptoms, your clinician or AI assistant can prioritize guidance.</p>
-              <p>We limit to one check-in per day to keep insights consistent. You can update tomorrow if anything changes.</p>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

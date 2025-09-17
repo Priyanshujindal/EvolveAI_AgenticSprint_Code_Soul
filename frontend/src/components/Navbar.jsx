@@ -21,7 +21,8 @@ export default function Navbar() {
             <span className="font-semibold tracking-wide text-slate-900 dark:text-slate-100">Health Sphere</span>
           </div>
           <div className="hidden md:flex items-center gap-1">
-            <NavLink className={linkCls} to="/">Dashboard</NavLink>
+            <NavLink className={linkCls} to="/">Home</NavLink>
+            <NavLink className={linkCls} to="/dashboard">Dashboard</NavLink>
             <NavLink className={linkCls} to="/daily-checkin">Daily Check-in</NavLink>
             <NavLink className={linkCls} to="/upload-report">Upload Report</NavLink>
           </div>
@@ -115,7 +116,8 @@ export default function Navbar() {
         </div>
         {open && (
           <div id="mobile-nav" className="md:hidden mt-3 grid gap-1">
-            <NavLink onClick={() => setOpen(false)} className={linkCls} to="/">Dashboard</NavLink>
+            <NavLink onClick={() => setOpen(false)} className={linkCls} to="/">Home</NavLink>
+            <NavLink onClick={() => setOpen(false)} className={linkCls} to="/dashboard">Dashboard</NavLink>
             <NavLink onClick={() => setOpen(false)} className={linkCls} to="/daily-checkin">Daily Check-in</NavLink>
             <NavLink onClick={() => setOpen(false)} className={linkCls} to="/upload-report">Upload Report</NavLink>
             {!loading && (
