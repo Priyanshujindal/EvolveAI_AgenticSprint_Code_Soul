@@ -37,6 +37,129 @@ A comprehensive healthcare-focused application that provides AI-powered diagnost
 - **Explainable AI** with SHAP and Captum integration
 - **OCR processing** for medical document analysis
 
+## 🧠 AI/ML System Deep Dive
+
+This section describes the AI/ML architecture, datasets, training/evaluation workflow, inference service, explainability, and operational concerns in detail.
+
+### Overview
+- **Purpose**: Provide risk-aware diagnostic assistance, red-flag detection, and explainable report insights to clinicians and patients.
+- **Runtime**: Python 3.x (FastAPI/UVicorn) service exposed to the Node.js backend via `AI_SERVICE_URL`.
+- **Core components**:
+  - **`backend/models/diagnosisModel.py`**: Diagnosis and risk scoring logic.
+  - **`backend/models/redFlagModel.py`**: Critical condition patterning and alerts.
+  - **`backend/models/explainabilityUtils.py`**: SHAP/Captum explainability helpers.
+  - **`backend/models/ai_service/main.py`**: FastAPI app that serves inference and explanations.
+  - **`backend/scripts/retrainModel.py`**: Offline training/retraining script.
+  - **`backend/services/reportExtractionService.js`** + **Google Vision**: OCR text extraction for uploaded reports.
+
+### Data and Features
+- **Data sources**:
+  - Patient-reported symptoms from Daily Check-ins.
+  - Uploaded clinical reports (PDF/images) parsed via OCR.
+  - Chat interaction snippets (sanitized) for symptom cues.
+- **Feature categories**:
+  - Demographic/contextual: age band, sex (if provided), encounter type.
+  - Symptom vectors: binary or scaled severity for common symptoms.
+  - Document-derived terms: TF/IDF or key-phrase indicators from OCR.
+  - Temporal aggregates: recent symptom trends from Activity Feed.
+- **Preprocessing**:
+  - Text normalization (lowercasing, punctuation, unicode cleanup).
+  - Medical keyword extraction and lemmatization.
+  - Robust missing-value handling and safe defaulting for sparse inputs.
+
+### Modeling Approach
+- **Diagnosis/Risk model** (`diagnosisModel.py`):
+  - Classical ML (e.g., logistic-style risk scoring or tree ensemble) optimized for interpretability and stability.
+  - Outputs include: per-condition risk scores, top-n candidates, and overall confidence.
+- **Red-flag model** (`redFlagModel.py`):
+  - Rule-augmented classifier that emphasizes sensitivity for urgent conditions.
+  - Produces binary/ordinal flags and supporting evidence snippets.
+- **Why classical-first**: predictable behavior, simple calibration, low-latency CPU inference, and easier explainability.
+
+### Explainability (XAI)
+- **Global and local explanations** with SHAP and Captum:
+  - SHAP values to quantify each feature’s contribution to predictions.
+  - Captum attribution (Integrated Gradients/GradientSHAP) for NN variants if introduced later.
+- **Outputs**:
+  - Per-prediction feature importances (JSON) consumable by frontend (e.g., `ReportSummary`, `RiskChart`).
+  - Highlighted terms from OCR text contributing to risk/flags.
+- **Safeguards**:
+  - Explanation truncation for UI readability.
+  - PHI/PII redaction enforcement before logging or UI surfacing.
+
+### Inference Service
+- **Location**: `backend/models/ai_service/main.py` (FastAPI)
+- **Default port**: `8090` (set in `.env` as `AI_SERVICE_URL`)
+- **Example startup**:
+  ```bash
+  cd backend/models
+  uvicorn ai_service.main:app --reload --port 8090
+  ```
+- **Representative endpoints** (paths may be organized inside `main.py`):
+  - `POST /inference/diagnose` → inputs: normalized symptoms, OCR text; outputs: ranked diagnoses with confidences.
+  - `POST /inference/red-flags` → inputs: same as above; outputs: red-flag labels with evidences.
+  - `POST /inference/explain` → inputs: model request + chosen label; outputs: SHAP/Captum attributions.
+- **Contracts**:
+  - All requests/responses are JSON.
+  - Backend server (`Node.js`) is the sole client; frontend never calls AI service directly.
+
+### Training & Retraining
+- **Script**: `backend/scripts/retrainModel.py`
+- **Workflow**:
+  1. Ingest labeled datasets (ensure de-identified).
+  2. Split train/val/test with stratification; fix random seeds for reproducibility.
+  3. Feature build: mirror production transform pipeline.
+  4. Model train: search limited hyperparams (ensure time-bounded).
+  5. Evaluate: AUROC/PR, calibration, red-flag sensitivity/PPV.
+  6. Export: persist model artifacts with version tags (e.g., `models/<name>-vX.pkl`).
+  7. Smoke-test inference parity on holdout and golden cases.
+- **Reproducibility**:
+  - Pin Python deps in `backend/models/requirements.txt`.
+  - Save random seeds and config snapshots alongside artifacts.
+  - Keep a minimal model card (YAML/Markdown) with metrics and caveats.
+
+### Evaluation & Monitoring
+- **Validation metrics**:
+  - Diagnosis: AUROC, AUPRC, Top-k accuracy, ECE calibration.
+  - Red flags: Sensitivity-first, specificity, PPV, false-negative tracking.
+- **Data drift checks** (planned): PSI/WoE on key features; alert thresholds.
+- **Runtime monitoring**:
+  - Latency and error-rate SLOs surfaced in backend logs.
+  - Periodic canary requests with expected outputs.
+
+### Performance & Scaling
+- **Latency targets**: p95 < 300ms CPU-only for typical inputs.
+- **Batching**: Single-request optimized; micro-batching optional behind queue if volume increases.
+- **Resource modes**:
+  - CPU default; GPU optional if deep models introduced.
+  - Thread-safe model objects preloaded at process start to avoid cold load.
+
+### Security, Privacy, Compliance
+- **PHI/PII handling**:
+  - Only de-identified data feeds training.
+  - At inference, personally identifying text is not persisted.
+- **Access control**:
+  - AI service is network-restricted; only backend can reach it.
+  - Firebase auth enforced at backend API; tokens never forwarded to AI service.
+- **Auditability**:
+  - Minimal, non-sensitive request fingerprints and model version IDs in logs.
+  - Versioned artifacts + model card to trace prediction provenance.
+
+### Failure Modes & Fallbacks
+- **Low confidence**: degrade to safe advice, prompt HITL (`hitlAgent.js`).
+- **Model service down**: backend returns graceful error with retry hints.
+- **Explainability failure**: return prediction without attributions and log warning.
+
+### Local Development Tips
+- Keep `.venv` activated when working in `backend/models`.
+- If adding new models:
+  - Extend `requirements.txt` with pinned versions.
+  - Encapsulate feature transforms for reuse across train/inference.
+  - Add unit tests around transforms and scorer logic.
+- If expanding explainability:
+  - Add slim adapters to `explainabilityUtils.py` to decouple methods.
+  - Limit attribution runtime; timebox to keep p95 acceptable.
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -147,18 +270,6 @@ A comprehensive healthcare-focused application that provides AI-powered diagnost
 ### Authentication
 Most endpoints require Firebase authentication via `Authorization: Bearer <token>` header.
 
-## 🧪 Testing
-
-```bash
-# Backend tests
-cd backend && npm test
-
-# Frontend tests
-cd frontend && npm test
-
-# Python model tests
-cd backend/models && pytest
-```
 
 ## 🚀 Deployment
 
@@ -206,7 +317,7 @@ The application is designed for cloud deployment with:
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Add tests for new functionality
+4. Follow coding standards and add documentation
 5. Submit a pull request
 
 ## 📄 License

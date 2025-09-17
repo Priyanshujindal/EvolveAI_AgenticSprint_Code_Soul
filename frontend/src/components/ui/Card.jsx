@@ -20,7 +20,7 @@ export function CardHeader({ className = '', children }) {
   return (
     <div 
       className={`
-        px-6 py-4 border-b border-slate-200/80 dark:border-slate-800/80
+        px-6 py-5 border-b border-slate-200/80 dark:border-slate-800/80
         ${className}
       `.trim()}
     >

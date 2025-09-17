@@ -34,7 +34,7 @@ This document provides a high-level map of the repository to help you quickly lo
   - `diagnosisModel.py`, `redFlagModel.py`, `explainabilityUtils.py`
 - **Scripts**: `backend/scripts/` (`dataBackup.js`, `retrainModel.py`)
 - **Package**: `backend/package.json`
-  - Scripts: `start`, `dev`, `test`
+  - Scripts: `start`, `dev`
   - Deps: express, cors, helmet, axios, multer, @google-cloud/vision, pdf-parse, zod, express-rate-limit
 
 #### Backend routes and endpoints

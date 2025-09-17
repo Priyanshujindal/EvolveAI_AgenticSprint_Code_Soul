@@ -6,7 +6,7 @@ import Button from './ui/Button';
 
 export default function Navbar() {
   const { theme, toggleTheme } = useTheme();
-  const { user, logout, loading, loginWithGoogle } = useAuth();
+  const { user, logout, loading } = useAuth();
   const [open, setOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const linkCls = ({ isActive }) =>
@@ -25,6 +25,7 @@ export default function Navbar() {
             <NavLink className={linkCls} to="/dashboard">Dashboard</NavLink>
             <NavLink className={linkCls} to="/daily-checkin">Daily Check-in</NavLink>
             <NavLink className={linkCls} to="/upload-report">Upload Report</NavLink>
+            <NavLink className={linkCls} to="/chatbot">AI Assistant</NavLink>
           </div>
           <div className="flex items-center gap-2 relative">
             <button
@@ -101,7 +102,6 @@ export default function Navbar() {
                 <div className="hidden md:flex items-center gap-2">
                   <NavLink className={linkCls} to="/login">Log in</NavLink>
                   <NavLink className={linkCls} to="/signup">Sign up</NavLink>
-                  <Button variant="secondary" onClick={() => { try { loginWithGoogle(); } catch(_) {} }}>Continue with Google</Button>
                 </div>
               )
             )}
@@ -120,6 +120,7 @@ export default function Navbar() {
             <NavLink onClick={() => setOpen(false)} className={linkCls} to="/dashboard">Dashboard</NavLink>
             <NavLink onClick={() => setOpen(false)} className={linkCls} to="/daily-checkin">Daily Check-in</NavLink>
             <NavLink onClick={() => setOpen(false)} className={linkCls} to="/upload-report">Upload Report</NavLink>
+            <NavLink onClick={() => setOpen(false)} className={linkCls} to="/chatbot">AI Assistant</NavLink>
             {!loading && (
               user ? (
                 <button
@@ -135,12 +136,7 @@ export default function Navbar() {
                 <>
                   <NavLink onClick={() => setOpen(false)} className={linkCls} to="/login">Log in</NavLink>
                   <NavLink onClick={() => setOpen(false)} className={linkCls} to="/signup">Sign up</NavLink>
-                  <button
-                    onClick={() => { setOpen(false); try { loginWithGoogle(); } catch(_) {} }}
-                    className="text-left px-3 py-2 rounded-md text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-                  >
-                    Continue with Google
-                  </button>
+                  
                 </>
               )
             )}

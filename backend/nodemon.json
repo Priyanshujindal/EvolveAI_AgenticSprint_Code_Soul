@@ -12,8 +12,6 @@
   "ext": "js,json",
   "ignore": [
     "node_modules",
-    "**/*.test.js",
-    "**/__tests__/**",
     "models/**"
   ],
   "env": {
