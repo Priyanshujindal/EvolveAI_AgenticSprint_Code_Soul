@@ -1,0 +1,30 @@
+###############################
+# DO NOT INSTALL FROM THIS FILE
+###############################
+# This root-level requirements.txt mirrors dependencies for documentation only.
+# Installing from here will NOT wire up the app. Use backend/models/requirements.txt.
+
+# Python AI service dependencies (reference copy):
+torch>=2.2.0
+shap>=0.45.0
+scipy>=1.11.0
+fastapi>=0.111.0
+uvicorn>=0.30.0
+pdfminer.six>=20231228
+pdf2image>=1.17.0
+Pillow>=10.3.0
+requests>=2.32.0
+pytesseract>=0.3.10
+
+# Correct setup (do this instead):
+#   cd backend/models
+#   python -m venv .venv
+#   # Windows PowerShell:
+#   #   .venv\\Scripts\\Activate.ps1
+#   # Windows CMD:
+#   #   .venv\\Scripts\\activate.bat
+#   # macOS/Linux:
+#   #   source .venv/bin/activate
+#   pip install -r requirements.txt
+#   uvicorn ai_service.main:app --port 8090
+

@@ -194,6 +194,10 @@ This section describes the AI/ML architecture, datasets, training/evaluation wor
    pip install -r requirements.txt
    ```
 
+   Note:
+   - Do not use the root-level `requirements.txt` to install Python deps. It is intentionally not used for setup and installing from it will not make the app work.
+   - Always install Python dependencies from `backend/models/requirements.txt` inside a virtual environment as shown above.
+
 3. **Configure environment variables**
 
    Create `.env` in the root directory:
@@ -337,6 +341,39 @@ Notes:
 - **Google Maps**: Location services and emergency lookup
 - **Google Vision**: OCR for document processing
 - **Firebase**: Authentication and data storage
+
+## 📦 Dependencies Overview
+
+### Backend (Node.js)
+- express ^4.19.2
+- cors ^2.8.5
+- helmet ^7.1.0
+- express-rate-limit ^7.4.0
+- axios ^1.7.7
+- multer ^1.4.5-lts.1
+- dotenv ^16.4.5
+- zod ^3.23.8
+- @google-cloud/vision ^4.3.2
+- pdf-parse ^1.1.1
+
+Dev:
+- nodemon ^3.1.7
+
+### Frontend (React/Vite)
+- react ^18.3.1, react-dom ^18.3.1
+- react-router-dom ^6.26.0
+- chart.js ^4.4.1, react-chartjs-2 ^5.2.0
+- recharts ^3.2.1
+- d3 ^7.9.0
+- firebase ^10.14.0
+
+Dev:
+- vite ^5.4.0
+- @vitejs/plugin-react ^4.3.1
+- tailwindcss ^3.4.10, postcss ^8.4.41, autoprefixer ^10.4.20
+
+### Python (AI service)
+- See `backend/models/requirements.txt` (mirrored at repository root in `requirements.txt` for reference only). Use the `backend/models` one to install.
 
 ## 📚 Documentation
 
