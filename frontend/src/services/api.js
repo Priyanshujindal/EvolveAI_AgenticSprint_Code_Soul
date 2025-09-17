@@ -1,7 +1,21 @@
-export const BASE = (import.meta && import.meta.env && import.meta.env.VITE_API_BASE)
-  ? import.meta.env.VITE_API_BASE.replace(/\/$/, '')
-  : 'http://localhost:8080';
+const isDev = !!(import.meta && import.meta.env && import.meta.env.DEV);
+export const BASE = isDev && (import.meta && import.meta.env && (import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_BASE_URL))
+  ? (import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_BASE_URL).replace(/\/$/, '')
+  : '';
+import { auth } from '../firebase';
+
 const DEV_HEADERS = { 'x-user-id': 'demo' }; // used when firebase-admin is not configured
+
+async function buildAuthHeaders() {
+  try {
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      const token = await currentUser.getIdToken();
+      return { Authorization: `Bearer ${token}` };
+    }
+  } catch (_) {}
+  return { ...DEV_HEADERS };
+}
 
 export async function analyze(body) {
   const res = await fetch(`${BASE}/api/analyze`, {
@@ -21,6 +35,30 @@ export async function analyzePython(body, url = 'http://localhost:8090') {
   return res.json();
 }
 
+export async function aiHealth() {
+  const res = await fetch(`${BASE}/api/ai/health`);
+  return res.json();
+}
+
+export async function pdfExtract(url, { useOcr, lang } = {}) {
+  const res = await fetch(`${BASE}/api/pdf-extract`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...DEV_HEADERS },
+    body: JSON.stringify({ url, useOcr, lang })
+  });
+  const text = await res.text();
+  let json = {};
+  try { json = text ? JSON.parse(text) : {}; } catch (_) { json = {}; }
+  if (!res.ok) {
+    const msg = json?.error || json?.message || `HTTP ${res.status}`;
+    const err = new Error(msg);
+    err.status = res.status;
+    err.body = json;
+    throw err;
+  }
+  return json;
+}
+
 export async function processReport(file) {
   const form = new FormData();
   form.append('file', file);
@@ -29,7 +67,17 @@ export async function processReport(file) {
     headers: { ...DEV_HEADERS },
     body: form
   });
-  return res.json();
+  const text = await res.text();
+  let json = {};
+  try { json = text ? JSON.parse(text) : {}; } catch (_) { json = {}; }
+  if (!res.ok) {
+    const msg = json?.error || json?.message || `HTTP ${res.status}`;
+    const err = new Error(msg);
+    err.status = res.status;
+    err.body = json;
+    throw err;
+  }
+  return json;
 }
 
 // Progress-capable upload with cancel support using XMLHttpRequest
@@ -70,7 +118,12 @@ export function processReportWithProgress(file, { onProgress, signal } = {}) {
             let message = 'Upload failed';
             try {
               const err = JSON.parse(xhr.responseText || '{}');
-              message = err?.message || message;
+              message = err?.error || err?.message || message;
+              // attach details for UI hints
+              const error = new Error(message);
+              error.status = xhr.status;
+              error.body = err;
+              return reject(error);
             } catch (_) {}
             const error = new Error(message);
             error.status = xhr.status;
@@ -130,11 +183,61 @@ export async function submitFeedback(feedback, userId = 'demo') {
 export async function chatWithGeminiApi(payload, { signal } = {}) {
   const res = await fetch(`${BASE}/functions/chat`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-User-Id': 'demo' },
+    headers: { 'Content-Type': 'application/json', ...(await buildAuthHeaders()) },
     body: JSON.stringify(payload),
     signal
   });
-  return res.json();
+  const text = await res.text();
+  let json = null;
+  try { json = text ? JSON.parse(text) : {}; } catch (_) { json = {}; }
+  if (!res.ok) {
+    const msg = json?.error || json?.message || `HTTP ${res.status}`;
+    const err = new Error(msg);
+    err.status = res.status;
+    err.body = json;
+    throw err;
+  }
+  return json;
+}
+
+export async function fetchRiskSeries(userId) {
+  const url = new URL(`${BASE}/functions/riskSeries`);
+  if (userId) {
+    url.searchParams.set('userId', String(userId));
+  }
+  const res = await fetch(url.toString(), {
+    headers: { ...(await buildAuthHeaders()) }
+  });
+  const text = await res.text();
+  let json = {};
+  try { json = text ? JSON.parse(text) : {}; } catch (_) { json = {}; }
+  if (!res.ok) {
+    const msg = json?.error || json?.message || `HTTP ${res.status}`;
+    const err = new Error(msg);
+    err.status = res.status;
+    err.body = json;
+    throw err;
+  }
+  return json;
+}
+
+export async function generateReportSummary(extractedData, ocrText) {
+  const res = await fetch(`${BASE}/functions/generateReportSummary`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(await buildAuthHeaders()) },
+    body: JSON.stringify({ extractedData, ocrText })
+  });
+  const text = await res.text();
+  let json = {};
+  try { json = text ? JSON.parse(text) : {}; } catch (_) { json = {}; }
+  if (!res.ok) {
+    const msg = json?.error || json?.message || `HTTP ${res.status}`;
+    const err = new Error(msg);
+    err.status = res.status;
+    err.body = json;
+    throw err;
+  }
+  return json;
 }
 
 

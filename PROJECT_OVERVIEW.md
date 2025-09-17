@@ -114,7 +114,9 @@ Note: Exact route paths are declared in `backend/index.js`. Auth with `authMiddl
 - Errors propagate to `middleware/errorHandler.js` which logs with `logger.js` and responds with sanitized messages. Avoid leaking provider errors to clients.
 
 ### Auth
-- `middleware/authMiddleware.js` verifies Firebase tokens for protected endpoints. Frontend obtains tokens via Firebase Auth and attaches them to requests through `frontend/src/services/api.js`.
+- Frontend authenticates with Firebase (Email/Password by default) using `frontend/src/firebase.js` and `context/AuthContext.jsx` via `hooks/useUserAuth.js`.
+- `frontend/src/services/api.js` adds `Authorization: Bearer <idToken>` to outgoing requests; falls back to `x-user-id: demo` in permissive dev mode.
+- Backend `middleware/authMiddleware.js` verifies Firebase ID tokens when `firebase-admin` is configured; otherwise it accepts `x-user-id` for local testing.
 
 ### Python Models Integration
 - Primary files: `backend/models/diagnosisModel.py`, `backend/models/redFlagModel.py`, `backend/models/explainabilityUtils.py`, entry script `backend/models/ai_service/main.py`.
@@ -149,8 +151,8 @@ Environment variables are split by app layer. See `backend/.env.example` and `fr
   - `GOOGLE_VISION_API_KEY` (or service account usage)
   - `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX`
 - Frontend (examples):
-  - `VITE_API_BASE_URL`
-  - `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, etc.
+  - `VITE_API_BASE`
+  - `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID`, optional storage/messaging ids
 
 ---
 

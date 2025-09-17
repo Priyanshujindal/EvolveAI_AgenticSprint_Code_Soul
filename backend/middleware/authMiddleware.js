@@ -1,4 +1,5 @@
 let admin = null;
+const { DEV_AUTH_PERMISSIVE } = require('../config/config');
 try {
   admin = require('firebase-admin');
   if (!admin.apps.length) {
@@ -10,7 +11,7 @@ try {
 
 function requireAuth(req, res, next) {
   // Support dev mode when firebase-admin is not installed or configured
-  if (!admin) {
+  if (!admin || DEV_AUTH_PERMISSIVE) {
     req.user = { uid: req.headers['x-user-id'] || 'demo' };
     return next();
   }

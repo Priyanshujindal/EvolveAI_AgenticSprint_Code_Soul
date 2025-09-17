@@ -34,8 +34,15 @@ Response:
   latencyMs: number
 }
 
-POST /functions/chatWithGemini
-Body: { messages: [{ role, content }] }
-Response: { reply }
+Auth
+- Most endpoints accept an optional `Authorization: Bearer <FirebaseIdToken>` header. In development, when Firebase Admin is not configured, the server may accept `x-user-id: demo`.
+
+POST /functions/chat
+Headers:
+- Authorization: Bearer <FirebaseIdToken>
+Body:
+{ messages: [{ role, content }] }
+Response:
+{ reply }
 
 
