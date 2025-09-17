@@ -12,7 +12,14 @@ try {
 function requireAuth(req, res, next) {
   // Support dev mode when firebase-admin is not installed or configured
   if (!admin || DEV_AUTH_PERMISSIVE) {
-    req.user = { uid: req.headers['x-user-id'] || 'demo' };
+    // In permissive mode, prefer client-provided userId from body options, then header, then demo
+    try {
+      const bodyUserId = (req && req.body && req.body.options && req.body.options.userId) || null;
+      const headerUserId = req.headers['x-user-id'] || null;
+      req.user = { uid: bodyUserId || headerUserId || 'demo' };
+    } catch (_) {
+      req.user = { uid: req.headers['x-user-id'] || 'demo' };
+    }
     return next();
   }
 
