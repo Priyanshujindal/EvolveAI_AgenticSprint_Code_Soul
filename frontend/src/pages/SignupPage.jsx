@@ -4,6 +4,8 @@ import Button from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '../components/ui/ToastProvider';
+import getFriendlyAuthError from '../utils/firebaseErrorMessages';
 
 export default function SignupPage() {
   const { user, signup, loginWithGoogle, sendPhoneCode, confirmPhoneCode } = useAuth();
@@ -16,6 +18,7 @@ export default function SignupPage() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
+  const { notify } = useToast();
 
   useEffect(() => {
     if (user) navigate('/');
@@ -36,7 +39,9 @@ export default function SignupPage() {
         navigate('/');
       }
     } catch (err) {
-      setError(err?.message || 'Signup failed');
+      const friendly = getFriendlyAuthError(err) || 'Signup failed';
+      setError(friendly);
+      notify(friendly, 'error');
     } finally {
       setSubmitting(false);
     }
@@ -50,7 +55,9 @@ export default function SignupPage() {
       await confirmPhoneCode(otp);
       navigate('/');
     } catch (err) {
-      setError(err?.message || 'Invalid OTP');
+      const friendly = getFriendlyAuthError(err) || 'Invalid OTP';
+      setError(friendly);
+      notify(friendly, 'error');
     } finally {
       setSubmitting(false);
     }
@@ -63,7 +70,9 @@ export default function SignupPage() {
       const res = await loginWithGoogle();
       if (res) navigate('/');
     } catch (err) {
-      setError(err?.message || 'Google sign-in failed');
+      const friendly = getFriendlyAuthError(err) || 'Google sign-in failed';
+      setError(friendly);
+      notify(friendly, 'error');
     } finally {
       setSubmitting(false);
     }

@@ -44,7 +44,7 @@ async function chatWithGemini(messages, options = {}) {
     temperature = 0.3,
     topK = 32,
     topP = 0.95,
-    maxOutputTokens = 512,
+    maxOutputTokens = 2048,
     safetySettings = [
       { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
       { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },

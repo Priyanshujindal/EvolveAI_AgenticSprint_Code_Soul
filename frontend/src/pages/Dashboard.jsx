@@ -1,41 +1,27 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import DiagnosisList from '../components/DiagnosisList';
+import { useNavigate } from 'react-router-dom';
 import RiskChart from '../components/RiskChart';
-import RedFlagAlert from '../components/RedFlagAlert';
-import { findNearbyAmbulance } from '../services/api';
-import HitlFeedbackForm from '../components/HitlFeedbackForm';
-import { submitFeedback } from '../services/api';
+import { findNearbyAmbulance, fetchRiskSeries } from '../services/api';
 import Button from '../components/ui/Button';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import Spinner from '../components/ui/Spinner';
 import { useToast } from '../components/ui/ToastProvider';
-import { analyze } from '../services/api';
-import Skeleton from '../components/ui/Skeleton';
 import Hero from '../components/Hero';
 import StatCard from '../components/StatCard';
 import QuickActions from '../components/QuickActions';
 import ActivityFeed from '../components/ActivityFeed';
-import { aiHealth } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
 import { collection, getDocs, orderBy, limit, query } from 'firebase/firestore';
+import { riskFromAnswersV2 } from '../utils/scoreHelpers';
 
 export default function Dashboard() {
   const { notify } = useToast();
   const { user } = useAuth();
-  const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const navigate = useNavigate();
   const [nearby, setNearby] = useState(null);
   const [nearbyLoading, setNearbyLoading] = useState(false);
   const [nearbyError, setNearbyError] = useState(null);
-  // Analysis controls
-  const [topK, setTopK] = useState(3);
-  const [explainMethod, setExplainMethod] = useState('auto');
-  const [useScipyWinsorize, setUseScipyWinsorize] = useState(true);
-  const [forceLocal, setForceLocal] = useState(false);
-  const [aiStatus, setAiStatus] = useState(null);
-  const [aiLoading, setAiLoading] = useState(false);
 
   // Daily check-in derived analytics
   const [checkins, setCheckins] = useState([]);
@@ -160,14 +146,27 @@ export default function Dashboard() {
         const snap = await getDocs(qy);
         const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         const reversed = items.slice().reverse();
-        const series = reversed.map(it => 1 - scoreFromAnswers(it.answers)); // invert to risk-like [0..1]
+        let series = reversed.map(it => riskFromAnswersV2(it.answers));
         const labels = reversed.map(it => (it?.date?.toDate ? it.date.toDate().toLocaleDateString() : ''));
         setCheckins(items);
         setRiskSeries(series);
         setRiskLabels(labels);
 
+        // Try Python risk series to stay in sync with Daily Check-in (prefer if available)
+        try {
+          const r = await fetchRiskSeries(user.uid);
+          if (r && r.ok && Array.isArray(r.points) && r.points.length > 0) {
+            setRiskSeries(r.points);
+            if (Array.isArray(r.labels) && r.labels.length === r.points.length) {
+              setRiskLabels(r.labels.map(s => {
+                try { return new Date(s).toLocaleDateString(); } catch (_) { return s; }
+              }));
+            }
+          }
+        } catch (_) {}
+
         // Compute rule-based risk on last 7 and 30
-        const last7 = items.slice(0, 7).reverse(); // items are desc; ensure recent 7
+        const last7 = items.slice(-7);
         const last30 = items;
         const rb = calculateRuleRisk(last30);
         setRiskSummary(rb);
@@ -178,73 +177,7 @@ export default function Dashboard() {
     loadCheckins();
   }, [user]);
 
-  // Persist/load preferences
-  React.useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem('analysisPrefs') || '{}');
-      if (saved && typeof saved === 'object') {
-        if (saved.topK) setTopK(saved.topK);
-        if (saved.explainMethod) setExplainMethod(saved.explainMethod);
-        if (typeof saved.useScipyWinsorize === 'boolean') setUseScipyWinsorize(saved.useScipyWinsorize);
-        if (typeof saved.forceLocal === 'boolean') setForceLocal(saved.forceLocal);
-      }
-    } catch (_) {}
-  }, []);
-  async function refreshAiHealth() {
-    try {
-      setAiLoading(true);
-      const r = await aiHealth();
-      setAiStatus(r);
-    } catch (_) {
-      setAiStatus({ ok: true, python: { available: false } });
-    } finally {
-      setAiLoading(false);
-    }
-  }
 
-  React.useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        setAiLoading(true);
-        const r = await aiHealth();
-        if (mounted) setAiStatus(r);
-      } catch (_) {
-        if (mounted) setAiStatus({ ok: true, python: { available: false } });
-      } finally {
-        if (mounted) setAiLoading(false);
-      }
-    })();
-    return () => { mounted = false; };
-  }, []);
-  React.useEffect(() => {
-    try {
-      localStorage.setItem('analysisPrefs', JSON.stringify({ topK, explainMethod, useScipyWinsorize, forceLocal }));
-    } catch (_) {}
-  }, [topK, explainMethod, useScipyWinsorize, forceLocal]);
-
-  async function analyzeMock() {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await analyze({
-        notes: 'fever and headache',
-        vitals: { temperature: 38.5 },
-        topK: Number(topK),
-        explainMethod,
-        useScipyWinsorize,
-        forceLocal
-      });
-      setResult(data);
-      if (forceLocal && aiStatus && aiStatus.python && aiStatus.python.available === false) {
-        notify('Python AI unavailable. Used local analysis.', 'info');
-      }
-    } catch (e) {
-      setError(String(e?.message || e));
-    } finally {
-      setLoading(false);
-    }
-  }
 
   async function locateAmbulance() {
     try {
@@ -292,8 +225,20 @@ export default function Dashboard() {
     <div>
       <Hero
         title="AI Diagnostic & Triage Dashboard"
-        subtitle="Run a quick analysis, review trends, and act on red flags."
-        cta={<div className="flex gap-3 items-center"><Button onClick={analyzeMock}>Run Analysis</Button><Button variant="secondary" onClick={locateAmbulance}>Find Ambulance</Button></div>}
+        subtitle="Track your health, upload reports, and monitor trends."
+        cta={
+          <div className="flex gap-3 items-center">
+            <Button onClick={() => navigate('/daily-checkin')}>
+              Daily Check-in
+            </Button>
+            <Button variant="secondary" onClick={() => navigate('/upload-report')}>
+              Upload Report
+            </Button>
+            <Button variant="secondary" onClick={locateAmbulance}>
+              Find Ambulance
+            </Button>
+          </div>
+        }
       />
 
       {/* Risk Alert based on last 7-30 days check-ins */}
@@ -326,120 +271,22 @@ export default function Dashboard() {
         </Card>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-        
-      </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <StatCard label="Patients analyzed" value={result?.data ? (result.data.diagnoses?.length || 1) : 0} hint="From last session" accent="blue" />
-        <StatCard label="Active alerts" value={result?.data?.redFlags?.length || 0} hint="Requires attention" accent="red" />
-        <StatCard label="Avg. risk" value={result?.data ? `${Math.round(52)}%` : '—'} hint="Across current sample" accent="amber" />
+        <StatCard label="Check-ins today" value={checkins.filter(c => {
+          const today = new Date();
+          const checkinDate = c?.date?.toDate ? c.date.toDate() : new Date(c?.date);
+          return checkinDate.toDateString() === today.toDateString();
+        }).length} hint="Daily check-ins" accent="blue" />
+        <StatCard label="Risk level" value={riskSummary.level} hint="Based on recent data" accent={riskSummary.level === 'High' ? 'red' : riskSummary.level === 'Mid' ? 'amber' : 'green'} />
+        <StatCard label="Total check-ins" value={checkins.length} hint="Last 30 days" accent="purple" />
       </div>
-      {loading && (
-        <div className="mb-4 text-slate-600 inline-flex items-center gap-2"><Spinner /> Analyzing...</div>
-      )}
-      {error && <div className="mb-4 text-red-600">{error}</div>}
-      {!result?.data && !loading && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          
-          
-          <div className="space-y-6">
-            <QuickActions onAnalyze={analyzeMock} onLocate={locateAmbulance} />
-            <ActivityFeed />
-          </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="space-y-6">
+          <QuickActions onLocate={locateAmbulance} />
+          <ActivityFeed />
         </div>
-      )}
-      {result?.data && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          
-          
-          <Card className="md:col-span-2">
-            <CardContent>
-              <RedFlagAlert alerts={result.data.redFlags} />
-            </CardContent>
-          </Card>
-          {result?.data?.explainability?.available && (
-            <Card className="md:col-span-2">
-              <CardHeader>
-                <CardTitle>Explainability</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-sm text-slate-600 mb-3">Method: {result.data.explainability.method}
-                  {result?.data?.explainability?.method === 'captum' && (
-                    <span className="ml-2 inline-block text-xs px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">Captum</span>
-                  )}
-                  {result?.data?.explainability?.method === 'shap' && (
-                    <span className="ml-2 inline-block text-xs px-2 py-0.5 rounded bg-indigo-100 text-indigo-700">SHAP</span>
-                  )}
-                  {result?.data?.explainability?.method === 'auto' && (
-                    <span className="ml-2 inline-block text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-700">Auto</span>
-                  )}
-                </div>
-                <div className="overflow-auto">
-                  <table className="min-w-full text-sm">
-                    <thead>
-                      <tr className="text-left text-slate-500">
-                        <th className="py-1 pr-4">Feature</th>
-                        <th className="py-1">Attribution</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(result.data.explainability.features || []).map((f, i) => {
-                        const val = Array.isArray(result.data.explainability.attributions) ? Number(result.data.explainability.attributions[i] || 0) : 0;
-                        const abs = Math.min(1, Math.abs(val));
-                        const width = `${Math.round(abs * 100)}%`;
-                        const color = val >= 0 ? 'bg-emerald-500' : 'bg-rose-500';
-                        return (
-                          <tr key={i} className="border-t">
-                            <td className="py-1 pr-4">{f}</td>
-                            <td className="py-1">
-                              <div className="flex items-center gap-3">
-                                <div className="w-40 h-2 bg-slate-200 rounded">
-                                  <div className={`${color} h-2 rounded`} style={{ width }} />
-                                </div>
-                                <span className="tabular-nums">{val.toFixed(4)}</span>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                {Number.isFinite(result?.data?.latencyMs) && (
-                  <div className="mt-3 text-xs text-slate-500">Python analysis latency: {result.data.latencyMs} ms</div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-          <Card className="md:col-span-2">
-            <CardHeader>
-              <CardTitle>Clinician Feedback</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <HitlFeedbackForm onSubmit={async text => {
-                const r = await submitFeedback({ text, advisory: result.data });
-                notify(`Feedback submitted: ${r?.data?.id || 'ok'}`, 'success');
-              }} />
-            </CardContent>
-          </Card>
-          {nearby && (
-            <Card className="md:col-span-2">
-              <CardHeader>
-                <CardTitle>Nearby Ambulance Services</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="list-disc pl-6">
-                  {(nearby.data || []).map((n, i) => (
-                    <li key={i}>
-                      <span className="font-medium">{n.name}</span> — {n.address} (rating: {n.rating || 'N/A'})
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      )}
+      </div>
       {(nearbyLoading || nearbyError || (nearby && Array.isArray(nearby.data))) && (
         <div className="mt-6">
           <Card>

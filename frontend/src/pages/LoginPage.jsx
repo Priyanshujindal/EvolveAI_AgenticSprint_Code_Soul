@@ -4,6 +4,8 @@ import Button from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useToast } from '../components/ui/ToastProvider';
+import getFriendlyAuthError from '../utils/firebaseErrorMessages';
 
 export default function LoginPage() {
   const { user, login, loginWithGoogle, sendPhoneCode, confirmPhoneCode } = useAuth();
@@ -14,6 +16,7 @@ export default function LoginPage() {
   const [phoneStep, setPhoneStep] = useState('enter'); // enter | verify
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const { notify } = useToast();
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -33,7 +36,9 @@ export default function LoginPage() {
       await login({ email, password });
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err?.message || 'Login failed');
+      const friendly = getFriendlyAuthError(err);
+      setError(friendly);
+      notify(friendly, 'error');
     } finally {
       setSubmitting(false);
     }
@@ -47,7 +52,9 @@ export default function LoginPage() {
       const res = await loginWithGoogle();
       if (res) navigate(from, { replace: true });
     } catch (err) {
-      setError(err?.message || 'Google sign-in failed');
+      const friendly = getFriendlyAuthError(err) || 'Google sign-in failed';
+      setError(friendly);
+      notify(friendly, 'error');
     } finally {
       setSubmitting(false);
     }
@@ -62,7 +69,9 @@ export default function LoginPage() {
       await sendPhoneCode(phone);
       setPhoneStep('verify');
     } catch (err) {
-      setError(err?.message || 'Failed to send OTP');
+      const friendly = getFriendlyAuthError(err) || 'Failed to send OTP';
+      setError(friendly);
+      notify(friendly, 'error');
     } finally {
       setSubmitting(false);
     }
@@ -77,7 +86,9 @@ export default function LoginPage() {
       await confirmPhoneCode(otp);
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err?.message || 'Invalid OTP');
+      const friendly = getFriendlyAuthError(err) || 'Invalid OTP';
+      setError(friendly);
+      notify(friendly, 'error');
     } finally {
       setSubmitting(false);
     }

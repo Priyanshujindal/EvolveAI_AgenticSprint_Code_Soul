@@ -18,6 +18,7 @@ const processReport = require('./cloudFunctions/processReport');
 const chatWithGemini = require('./cloudFunctions/chatWithGemini');
 const findNearbyAmbulance = require('./cloudFunctions/findNearbyAmbulance');
 const submitFeedback = require('./cloudFunctions/submitFeedback');
+const generateReportSummary = require('./cloudFunctions/generateReportSummary');
 
 const app = express();
 app.set('trust proxy', true);
@@ -266,6 +267,7 @@ app.post('/functions/processReport', requireAuth, processReport);
 app.post('/functions/chat', requireAuth, chatWithGemini);
 app.get('/functions/findNearbyAmbulance', findNearbyAmbulance);
 app.post('/functions/submitFeedback', requireAuth, submitFeedback);
+app.post('/functions/generateReportSummary', requireAuth, generateReportSummary);
 
 // Serve frontend build in production for a single combined app
 try {

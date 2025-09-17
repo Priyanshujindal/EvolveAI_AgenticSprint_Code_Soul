@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { riskFromAnswersV2 } from '../utils/scoreHelpers';
 import Button from '../components/ui/Button';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import Textarea from '../components/ui/Textarea';
@@ -145,19 +146,21 @@ export default function DailyCheckin() {
         const snap = await getDocs(q);
         const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         const reversed = items.slice().reverse();
-        let pts = reversed.map(it => scoreFromAnswers(it.answers));
+        let pts = reversed.map(it => riskFromAnswersV2(it.answers));
         let lbls = reversed.map(it => (it?.date?.toDate ? it.date.toDate().toLocaleDateString() : ''));
 
-        // If Python AI is available, request risk series and use it
+        // If Python AI is available, request risk series and prefer it regardless of length
         try {
           if (aiStatus?.python?.available) {
             const r = await fetchRiskSeries(user.uid);
-            if (r && r.ok && Array.isArray(r.points) && r.points.length === reversed.length) {
-              pts = r.points;
-              if (Array.isArray(r.labels) && r.labels.length === reversed.length) {
+            if (r && r.ok && Array.isArray(r.points) && r.points.length > 0) {
+              pts = r.points; // assume already higher = higher risk
+              if (Array.isArray(r.labels) && r.labels.length === r.points.length) {
                 lbls = r.labels.map(s => {
                   try { return new Date(s).toLocaleDateString(); } catch (_) { return s; }
                 });
+              } else {
+                lbls = r.points.map((_, i) => `T${i + 1}`);
               }
             }
           }
@@ -168,8 +171,9 @@ export default function DailyCheckin() {
           const prev = pts.slice(n - 6, n - 3).reduce((s, v) => s + v, 0) / 3;
           const last = pts.slice(n - 3).reduce((s, v) => s + v, 0) / 3;
           const delta = last - prev;
-          if (delta > 0.06) trend = 'Improving';
-          else if (delta < -0.06) trend = 'Worsening';
+          // With higher = riskier, rising risk is Worsening
+          if (delta > 0.06) trend = 'Worsening';
+          else if (delta < -0.06) trend = 'Improving';
           else trend = 'Stable';
         }
         setHistory(items);
@@ -273,47 +277,7 @@ export default function DailyCheckin() {
     <div>
       <h1 className="text-xl font-semibold mb-4">Daily Check-in</h1>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>AI Service</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {aiLoading ? (
-              <div className="text-slate-600 inline-flex items-center gap-2"><Spinner size={16} /> Checking service...</div>
-            ) : (
-              <div className="text-sm text-slate-700 dark:text-slate-300">
-                Python service: {aiStatus?.python?.available ? (
-                  <span className="text-emerald-600 font-medium">Available</span>
-                ) : (
-                  <span className="text-slate-500">Unavailable</span>
-                )}
-                {aiStatus?.python?.available && (
-                  <span className="ml-2 text-xs text-slate-500">Torch: {String(!!aiStatus?.python?.torchAvailable)} • CUDA: {String(!!aiStatus?.python?.cudaAvailable)}</span>
-                )}
-              </div>
-            )}
-            <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-              <div>
-                <label className="block text-sm text-slate-600 mb-1">Top K</label>
-                <input type="number" min={1} max={3} value={topK} onChange={e => setTopK(e.target.value)} className="border rounded px-2 py-1 w-full" />
-              </div>
-              <div>
-                <label className="block text-sm text-slate-600 mb-1">Explainability</label>
-                <select value={explainMethod} onChange={e => setExplainMethod(e.target.value)} className="border rounded px-2 py-1 w-full">
-                  <option value="auto">Auto</option>
-                  <option value="captum">Captum</option>
-                  <option value="shap">SHAP</option>
-                  <option value="none">None</option>
-                </select>
-              </div>
-              <label className="flex items-center gap-2 mt-6 md:mt-0">
-                <input type="checkbox" checked={useScipyWinsorize} onChange={e => setUseScipyWinsorize(e.target.checked)} className="h-4 w-4" />
-                <span className="text-sm text-slate-700">Use SciPy winsorization</span>
-              </label>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
+        <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Today's Check-in</CardTitle>
           </CardHeader>
@@ -522,7 +486,7 @@ export default function DailyCheckin() {
             )}
           </CardContent>
         </Card>
-        <Card>
+        <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Your recent check-ins</CardTitle>
           </CardHeader>
@@ -550,7 +514,7 @@ export default function DailyCheckin() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Why this matters</CardTitle>
           </CardHeader>

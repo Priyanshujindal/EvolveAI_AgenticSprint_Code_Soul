@@ -221,4 +221,23 @@ export async function fetchRiskSeries(userId) {
   return json;
 }
 
+export async function generateReportSummary(extractedData, ocrText) {
+  const res = await fetch(`${BASE}/functions/generateReportSummary`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(await buildAuthHeaders()) },
+    body: JSON.stringify({ extractedData, ocrText })
+  });
+  const text = await res.text();
+  let json = {};
+  try { json = text ? JSON.parse(text) : {}; } catch (_) { json = {}; }
+  if (!res.ok) {
+    const msg = json?.error || json?.message || `HTTP ${res.status}`;
+    const err = new Error(msg);
+    err.status = res.status;
+    err.body = json;
+    throw err;
+  }
+  return json;
+}
+
 
