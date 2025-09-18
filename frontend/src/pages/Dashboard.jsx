@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import Seo from '../components/Seo';
 import { useNavigate } from 'react-router-dom';
 import RiskChart from '../components/RiskChart';
 import { findNearbyAmbulance, fetchRiskSeries } from '../services/api';
@@ -221,6 +222,12 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <Seo
+        title="Dashboard | Health Sphere"
+        description="View risk trends, recent activity, and take quick actions with AI-powered insights."
+        url="https://evolveai-backend.onrender.com/dashboard"
+        canonical="https://evolveai-backend.onrender.com/dashboard"
+      />
       <Hero
         title="AI Diagnostic & Triage Dashboard"
         subtitle="Track your health, upload reports, and monitor trends with our AI-powered health monitoring system."

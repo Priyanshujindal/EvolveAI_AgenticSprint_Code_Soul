@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Seo from '../components/Seo';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/ui/Button';
@@ -133,6 +134,12 @@ export default function Home() {
 
   return (
     <div className="relative overflow-hidden">
+      <Seo
+        title="Health Sphere | AI‑Powered Health Companion"
+        description="Track daily wellness, analyze medical reports, and get personalized AI health insights."
+        url="https://evolveai-backend.onrender.com/"
+        canonical="https://evolveai-backend.onrender.com/"
+      />
       {/* Hero Section */}
       <section className="relative py-12 lg:py-20">
         {/* Background Elements */}

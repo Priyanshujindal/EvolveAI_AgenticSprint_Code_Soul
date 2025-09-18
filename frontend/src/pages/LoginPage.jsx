@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import Seo from '../components/Seo';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
@@ -53,6 +54,13 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-b from-brand-50 to-white dark:from-slate-900 dark:to-slate-950 grid place-items-center px-4">
+      <Seo
+        title="Sign in | Health Sphere"
+        description="Securely sign in to access your health dashboard and reports."
+        url="https://evolveai-backend.onrender.com/login"
+        canonical="https://evolveai-backend.onrender.com/login"
+        noIndex={true}
+      />
       <div className="w-full max-w-5xl">
         <div className="grid md:grid-cols-2 gap-6 items-stretch">
           <div className="hidden md:flex relative overflow-hidden rounded-xl border border-brand-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-8">

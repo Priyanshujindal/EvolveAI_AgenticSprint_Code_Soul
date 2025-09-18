@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Seo from '../components/Seo';
 import { processReportWithProgress, pdfExtract, generateReportSummary } from '../services/api';
 import Button from '../components/ui/Button';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
@@ -483,6 +484,12 @@ export default function UploadReport() {
 
   return (
     <div>
+      <Seo
+        title="Upload Report | Health Sphere"
+        description="Upload a medical report (PDF or image) to get AI-powered extraction and insights."
+        url="https://evolveai-backend.onrender.com/upload-report"
+        canonical="https://evolveai-backend.onrender.com/upload-report"
+      />
       <div className="mb-6">
         <h1 className="text-2xl font-semibold mb-1 text-transparent bg-clip-text bg-gradient-to-r from-brand-600 via-blue-600 to-blue-500">Upload Report</h1>
         <p className="text-sm text-slate-600 dark:text-slate-400">Upload a single medical report to extract key details with OCR. We support PDF and image formats (one file at a time - remove current file to upload a new one).</p>
