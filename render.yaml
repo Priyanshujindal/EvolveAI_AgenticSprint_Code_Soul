@@ -1,7 +1,7 @@
 services:
   - type: web
     name: evolveai-backend
-    env: node
+    runtime: node
     plan: free
     region: oregon
     buildCommand: |

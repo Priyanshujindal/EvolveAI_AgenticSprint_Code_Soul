@@ -9,6 +9,10 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    build: {
+      // Increase limit (in kB) to silence large chunk warnings in production builds
+      chunkSizeWarningLimit: 2000,
+    },
     server: {
       port: 5173,
       proxy: {
