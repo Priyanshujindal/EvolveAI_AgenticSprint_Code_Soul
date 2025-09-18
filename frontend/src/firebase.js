@@ -51,6 +51,15 @@ function isConfigValid(cfg) {
   return !!(cfg && cfg.apiKey && cfg.authDomain && cfg.projectId && cfg.appId);
 }
 
+function getMissingConfigKeys(cfg) {
+  const missing = [];
+  if (!cfg?.apiKey) missing.push('VITE_FIREBASE_API_KEY');
+  if (!cfg?.authDomain) missing.push('VITE_FIREBASE_AUTH_DOMAIN');
+  if (!cfg?.projectId) missing.push('VITE_FIREBASE_PROJECT_ID');
+  if (!cfg?.appId) missing.push('VITE_FIREBASE_APP_ID');
+  return missing;
+}
+
 let app;
 let auth;
 let analytics;
@@ -59,7 +68,11 @@ let storage;
 
 try {
   if (!isConfigValid(firebaseConfig)) {
-    throw new Error('Missing Firebase env configuration');
+    const missing = getMissingConfigKeys(firebaseConfig);
+    const msg = missing.length
+      ? `Missing Firebase env configuration: ${missing.join(', ')}`
+      : 'Missing Firebase env configuration';
+    throw new Error(msg);
   }
   // Apply normalization safely before init
   const normalizedBucketHost = normalizeStorageBucket(firebaseConfig.storageBucket) || (firebaseConfig.projectId ? `${firebaseConfig.projectId}.appspot.com` : undefined);

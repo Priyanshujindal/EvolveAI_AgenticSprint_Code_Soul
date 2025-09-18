@@ -6,6 +6,7 @@ import threading
 import time
 import io
 import re
+import base64
 
 try:
     import requests
@@ -62,6 +63,11 @@ class PdfExtractRequest(BaseModel):
     url: str
     use_ocr: bool | None = None  # True: force OCR, False: never OCR, None: auto-fallback
     lang: str | None = None      # e.g., 'eng', 'hin', 'eng+hin'
+class UploadExtractRequest(BaseModel):
+    data: str  # base64 of binary
+    mime: str | None = None
+    use_ocr: bool | None = None
+    lang: str | None = None
 
 
 
@@ -217,6 +223,88 @@ def extract_from_pdf(req: PdfExtractRequest):
             method = method or "none"
 
         # Very light regex-based lab extraction similar to Node side
+        def find(pattern):
+            m = re.search(pattern, text, flags=re.IGNORECASE)
+            return m.group(1) if m else None
+
+        def find_float(pattern):
+            v = find(pattern)
+            if not v:
+                return None
+            try:
+                return float(re.findall(r"-?\d+(?:\.\d+)?", v.replace(",", ""))[0])
+            except Exception:
+                return None
+
+        meta = {
+            "patientName": find(r"(?:patient|name)\s*[:\-]?\s*([A-Za-z ,.'-]{3,})"),
+            "patientId": find(r"(?:mrn|patient\s*id|accession)\s*[:\-]?\s*([A-Za-z0-9\-]+)"),
+            "date": find(r"(?:date|reported\s*on)\s*[:\-]?\s*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|\d{4}[\-]\d{2}[\-]\d{2})"),
+        }
+        labs = []
+        def push_lab(name, value, unit):
+            if value is None:
+                return
+            labs.append({"name": name, "value": value, "unit": unit, "confidence": 0.6})
+
+        push_lab("glucose", find_float(r"glucose\s*[:=\-]?\s*([\d.,]+)\s*(mg\/dl|mmol\/l)?"), "mg/dL")
+        push_lab("hemoglobin", find_float(r"(hemoglobin|hgb)\s*[:=\-]?\s*([\d.,]+)"), "g/dL")
+        push_lab("creatinine", find_float(r"creatinine\s*[:=\-]?\s*([\d.,]+)"), "mg/dL")
+        push_lab("sodium", find_float(r"sodium\s*[:=\-]?\s*([\d.,]+)"), "mmol/L")
+        push_lab("potassium", find_float(r"potassium\s*[:=\-]?\s*([\d.,]+)"), "mmol/L")
+
+        return {
+            "ok": True,
+            "ocr": {"text": text, "pages": [], "method": method, "pageCount": pages_meta.get("count"), "lang": chosen_lang},
+            "extracted": {"meta": meta, "labs": labs, "diagnoses": [], "medications": []},
+            "latencyMs": int((time.time() - started) * 1000),
+        }
+    except Exception as e:
+        return {"ok": False, "error": str(e), "latencyMs": int((time.time() - started) * 1000)}
+
+
+@app.post("/extract_from_upload")
+def extract_from_upload(req: UploadExtractRequest):
+    started = time.time()
+    try:
+        content = base64.b64decode(req.data or "") if req and req.data else b""
+        if not content:
+            return {"ok": False, "error": "empty content", "latencyMs": int((time.time() - started) * 1000)}
+        chosen_lang = (req.lang or "eng").strip()
+
+        text = ""
+        method = "none"
+        pages_meta = {"count": None}
+
+        if req.mime == "application/pdf":
+            if pdfminer_extract_text is not None:
+                method = "pdfminer"
+                text = (pdfminer_extract_text(io.BytesIO(content)) or "").strip()
+            should_try_ocr = (
+                (req.use_ocr is True) or ((req.use_ocr is None) and (not text or len(text) < 200))
+            )
+            if should_try_ocr and convert_from_bytes is not None and pytesseract is not None:
+                method = "ocr"
+                images = convert_from_bytes(content)
+                pages_meta["count"] = len(images) if images else 0
+                ocr_pages: List[str] = []
+                for img in images:
+                    try:
+                        if isinstance(img, Image.Image):
+                            ocr_pages.append(pytesseract.image_to_string(img, lang=chosen_lang) or "")
+                    except Exception:
+                        ocr_pages.append("")
+                text = "\n\n".join([p.strip() for p in ocr_pages if p]).strip()
+        else:
+            # Assume image
+            if Image is not None and pytesseract is not None:
+                try:
+                    img = Image.open(io.BytesIO(content))
+                    method = "ocr"
+                    text = pytesseract.image_to_string(img, lang=chosen_lang) or ""
+                except Exception:
+                    text = ""
+
         def find(pattern):
             m = re.search(pattern, text, flags=re.IGNORECASE)
             return m.group(1) if m else None
